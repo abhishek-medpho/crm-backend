@@ -516,7 +516,8 @@ export default class patientLeadController {
             await logAudit(req.user.id, 'PATIENT_UPDATE', 'opd_booking', updatedRow.id, { changedFields: updateFields });
         }
         
-        res.status(200).json(new apiResponse(200, { id: updatedRow.id }, "Updated successfully"));
+   
+        res.status(200).json(new apiResponse(200, updatedRow, "Updated successfully"));
         
         const runBackgroundTasks = async () => {
             try {

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { pool } from '../DB/db.js';
 import { URLSearchParams } from 'url';
 import https from 'https';
-import "dotenv/config"; // Ensure env vars are loaded
+import "dotenv/config"; 
 
 const sendUltraMsg = async (to, body) => {
     if (!to) return; 
@@ -237,7 +237,7 @@ export const sendPhoneUpdateNotifications = async (data) => {
         promises.push(sendUltraMsg(saathiGroupId, saathiMessage));
     }
 
-
+    // 2. Notify NDM (Using fetched phone number)
     if (data.ndmContact) {
         const ndmMessage = `*Dear Medphoite,*\nYour lead's with the is successfully updated and shared with Saathi Group, details are as under:\n\n` +
             `*Patient Unique Code:* ${data.uniqueCode}\n` +
@@ -251,31 +251,7 @@ export const sendPhoneUpdateNotifications = async (data) => {
         promises.push(sendUltraMsg(data.ndmContact, ndmMessage));
     }
 
-    // 3. Notify Hospitals
-    if (data.hospitalIds && data.hospitalIds.length > 0) {
-        try {
-            const query = `SELECT hospital_name, hospital_group_id FROM crm.hospitals WHERE id = ANY($1::uuid[])`;
-            const res = await pool.query(query, [data.hospitalIds]);
-            const targetHospitals = res.rows;
 
-            targetHospitals.forEach(h => {
-                if (h.hospital_group_id) {
-                    const hospitalMessage = `*Dear ${h.hospital_name} Management,*\nThe contact details for a prospective patient have been updated:\n\n` +
-                        `*Patient Unique Code:* ${data.uniqueCode}\n` +
-                        `*Name:* ${data.name}\n` +
-                        `*New Patient Phone:* ${data.phoneNumber}\n` +
-                        `*Patient Age:* ${data.age} years\n` +
-                        `*Gender:* ${data.gender}\n` +
-                        `*Medical Issue:* ${data.medicalIssue}\n` +
-                        `*Panel:* ${data.panel}\n\n` +
-                        `*Regards*\n*Operations, Medpho*`;
-                    promises.push(sendUltraMsg(h.hospital_group_id, hospitalMessage));
-                }
-            });
-        } catch (e) {
-            console.error("Error fetching hospital groups for update:", e.message);
-        }
-    }
 
     await Promise.allSettled(promises);
 };

@@ -71,11 +71,11 @@ export default function UpdatePhonePage() {
     };
 
     try {
-      await api.put("/patientLeads/update", payload);
+      const res = await api.put("/patientLeads/update", payload);
       
-     
+
       setSuccessData({
-          ref: bookingRef, 
+          ref: res.data.data.booking_reference || bookingRef, 
           phone: newPhone
       });
       
