@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import axios from 'axios';
-
+import Header from "../components/Header";
 
 const getTodayDate = () => {
     const now = new Date();
@@ -14,15 +14,15 @@ const getTodayDate = () => {
 
 // List of facilities
 const FACILITIES_LIST = [
-    'Medicines', 
-    'Sugar', 
-    'Blood Pressure', 
+    'Medicines',
+    'Sugar',
+    'Blood Pressure',
     'IPD/Injections'
 ];
 
 export default function LogMeetingPage() {
     const navigate = useNavigate();
-    
+
     // --- 1. State for ALL form fields ---
     const [formData, setFormData] = useState({
         doctor_name: '',
@@ -36,30 +36,30 @@ export default function LogMeetingPage() {
         comments_by_ndm: '',
         chances_of_getting_leads: 'medium',
         facilities: [] as string[],
-        timestamp_of_the_meeting: getTodayDate() 
+        timestamp_of_the_meeting: getTodayDate()
     });
 
     // --- 2. NEW: State for file objects ---
     const [clinicFile, setClinicFile] = useState<File | null>(null);
     const [selfieFile, setSelfieFile] = useState<File | null>(null);
-    
+
     // --- State for GPS ---
-    const [gpsLocation, setGpsLocation] = useState<{lat: number, lon: number} | null>(null);
+    const [gpsLocation, setGpsLocation] = useState<{ lat: number, lon: number } | null>(null);
     const [gpsError, setGpsError] = useState('');
 
     // --- 3. State for form submission and UI ---
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState('');
-    
 
-    const [successData, setSuccessData] = useState<{doctorName: string} | null>(null);
+
+    const [successData, setSuccessData] = useState<{ doctorName: string } | null>(null);
 
     // --- 4. State for doctor auto-fill ---
     const [isFetchingDoctor, setIsFetchingDoctor] = useState(false);
     const [isDoctorFound, setIsDoctorFound] = useState(false);
     const [doctorError, setDoctorError] = useState('');
 
-    const user = JSON.parse(localStorage.getItem("user") || '{"name":"User"}');
+
 
     // --- 5. Effect to get GPS on page load ---
     useEffect(() => {
@@ -102,7 +102,7 @@ export default function LogMeetingPage() {
     // --- 7. Function to fetch doctor details by phone ---
     const fetchDoctorDetails = async () => {
         const phone = formData.doctor_phone_number;
-        
+
         if (phone.length !== 10) {
             setDoctorError("");
             setIsDoctorFound(false);
@@ -117,18 +117,18 @@ export default function LogMeetingPage() {
         try {
             const res = await api.get(`/doctors/get-by-phone/${phone}`);
             const { name, locality } = res.data.data;
-            
-            setFormData(prev => ({ 
-                ...prev, 
+
+            setFormData(prev => ({
+                ...prev,
                 doctor_name: name,
-                locality: locality || '' 
+                locality: locality || ''
             }));
-            setIsDoctorFound(true); 
+            setIsDoctorFound(true);
 
         } catch (err) {
             console.error("Failed to fetch doctor:", err);
             setDoctorError("Doctor not found. Please enter details.");
-            setIsDoctorFound(false); 
+            setIsDoctorFound(false);
             setFormData(prev => ({ ...prev, doctor_name: '', locality: '' }));
         } finally {
             setIsFetchingDoctor(false);
@@ -168,12 +168,12 @@ export default function LogMeetingPage() {
             opd_count: '', duration_of_meeting: '15', numPatientsDuringMeeting: '0',
             rating: '3', queries_by_the_doctor: '', comments_by_ndm: '',
             chances_of_getting_leads: 'medium', facilities: [],
-            timestamp_of_the_meeting: getTodayDate() 
+            timestamp_of_the_meeting: getTodayDate()
         });
-        
+
         handleFileRemove('clinic');
         handleFileRemove('selfie');
-        
+
         setIsDoctorFound(false);
         setDoctorError('');
     };
@@ -196,17 +196,17 @@ export default function LogMeetingPage() {
             setLoading(false);
             return;
         }
-        
+
         if (!gpsLocation) {
-             setError("GPS location is required. Please enable location services and reload.");
-             setLoading(false);
-             return;
+            setError("GPS location is required. Please enable location services and reload.");
+            setLoading(false);
+            return;
         }
 
         const date = new Date(formData.timestamp_of_the_meeting.replace(/-/g, '/'));
         const localTime = new Date().toTimeString().split(' ')[0]; // Get current time
         const formattedTimestamp = `${date.getDate().toString().padStart(2, '0')}/${(date.getMonth() + 1).toString().padStart(2, '0')}/${date.getFullYear()} ${localTime}`;
-        
+
         const gpsLink = `https://maps.google.com/?q=${gpsLocation.lat},${gpsLocation.lon}`;
 
         const submissionFormData = new FormData();
@@ -225,7 +225,7 @@ export default function LogMeetingPage() {
         submissionFormData.append('latitude', String(gpsLocation.lat));
         submissionFormData.append('longitude', String(gpsLocation.lon));
         submissionFormData.append('gps_location_of_the_clinic', gpsLink);
-        
+
         if (clinicFile) {
             submissionFormData.append('clinic_photo', clinicFile);
         }
@@ -240,7 +240,7 @@ export default function LogMeetingPage() {
                 }
             });
 
- 
+
             setSuccessData({
                 doctorName: response.data.data.doctor_name
             });
@@ -255,37 +255,37 @@ export default function LogMeetingPage() {
         setLoading(false);
     };
 
-    const inputStyles = "w-full px-4 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
-    const selectStyles = "w-full px-2 py-2.5 bg-gray-700 border border-gray-600 rounded-lg text-white focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"; 
-    const labelStyles = "block text-sm font-medium text-gray-300 mb-2";
-    const fileInputStyles = "w-full text-sm text-gray-400 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-500/20 file:text-blue-300 hover:file:bg-blue-500/30 disabled:opacity-50";
+    const inputStyles = "w-full px-4 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
+    const selectStyles = "w-full px-2 py-2.5 bg-white border border-gray-300 rounded-lg text-gray-900 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all";
+    const labelStyles = "block text-sm font-medium text-gray-700 mb-2";
+    const fileInputStyles = "w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 disabled:opacity-50";
 
     return (
-        <div className="min-h-screen bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 relative">
-            
+        <div className="min-h-screen bg-gray-50 relative">
+
             {/* --- SUCCESS MODAL --- */}
             {successData && (
-                <div className="fixed inset-0 bg-black/70 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-[fadeIn_0.2s_ease-out]">
-                    <div className="bg-gray-800 border border-gray-600 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl transform scale-100 transition-all">
-                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-900/30 mb-6">
-                            <svg className="h-10 w-10 text-blue-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <div className="fixed inset-0 bg-black/50 backdrop-blur-sm flex items-center justify-center z-[100] p-4 animate-[fadeIn_0.2s_ease-out]">
+                    <div className="bg-white border border-gray-200 p-8 rounded-2xl max-w-sm w-full text-center shadow-2xl transform scale-100 transition-all">
+                        <div className="mx-auto flex items-center justify-center h-16 w-16 rounded-full bg-blue-100 mb-6">
+                            <svg className="h-10 w-10 text-blue-600" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.828 14.828a4 4 0 01-5.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                             </svg>
                         </div>
-                        
-                        <h3 className="text-2xl font-bold text-white mb-2">Meeting Logged!</h3>
-                        <p className="text-gray-400 mb-6">
-                            Meeting with <span className="text-white font-medium">{successData.doctorName}</span> has been successfully recorded.
+
+                        <h3 className="text-2xl font-bold text-gray-900 mb-2">Meeting Logged!</h3>
+                        <p className="text-gray-600 mb-6">
+                            Meeting with <span className="text-gray-900 font-medium">{successData.doctorName}</span> has been successfully recorded.
                         </p>
-                        
+
                         <div className="grid grid-cols-2 gap-3">
-                            <button 
+                            <button
                                 onClick={() => navigate('/')}
-                                className="px-4 py-2 bg-transparent hover:bg-gray-700 text-gray-300 rounded-lg border border-gray-600 transition-colors font-medium cursor-pointer"
+                                className="px-4 py-2 bg-transparent hover:bg-gray-100 text-gray-600 rounded-lg border border-gray-300 transition-colors font-medium cursor-pointer"
                             >
                                 Go Home
                             </button>
-                            <button 
+                            <button
                                 onClick={() => {
                                     setSuccessData(null);
                                     resetForm();
@@ -300,32 +300,13 @@ export default function LogMeetingPage() {
             )}
 
             {/* Header */}
-            <header className="bg-gray-800/50 backdrop-blur-sm border-b border-gray-700 sticky top-0 z-50">
-                <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4">
-                    <div className="flex items-center justify-between">
-                        <button
-                            onClick={() => navigate(-1)}
-                            className="flex items-center space-x-2 text-gray-400 hover:text-white transition-colors"
-                        >
-                            <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                            </svg>
-                        </button>
-                        <div className="flex items-center space-x-2 text-sm text-gray-400">
-                            <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                            </svg>
-                            <span>{user.name}</span>
-                        </div>
-                    </div>
-                </div>
-            </header>
+            <Header showBack={true} />
 
             {/* Main Content */}
-            <main className="max-w-4xl w-full h-full mx-auto px-2 md:px-6 lg:px-8 py-8">
-                <div className="bg-gray-800 rounded-2xl shadow-2xl border border-gray-700 overflow-hidden">
+            <main className="max-w-4xl w-full mx-auto px-4 py-8">
+                <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                     {/* Page Header */}
-                    <div className="bg-gradient-to-r from-blue-500 to-purple-500 px-3 py-6">
+                    <div className="bg-purple-600 px-6 py-8">
                         <div className="flex items-center space-x-3">
                             <div>
                                 <h1 className="text-2xl font-bold text-white">Log Doctor Meeting</h1>
@@ -336,7 +317,7 @@ export default function LogMeetingPage() {
                     {/* Alerts */}
                     <div className="px-6 pt-6">
                         {error && (
-                            <div className="mb-6 p-4 bg-red-900/50 border border-red-500 rounded-lg text-red-200 text-sm animate-shake">
+                            <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg text-red-700 text-sm animate-shake">
                                 <div className="flex items-center">
                                     <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zM8.707 7.293a1 1 0 00-1.414 1.414L8.586 10l-1.293 1.293a1 1 0 101.414 1.414L10 11.414l1.293 1.293a1 1 0 001.414-1.414L11.414 10l1.293-1.293a1 1 0 00-1.414-1.414L10 8.586 8.707 7.293z" clipRule="evenodd" /></svg>
                                     {error}
@@ -344,7 +325,7 @@ export default function LogMeetingPage() {
                             </div>
                         )}
                         {gpsError && !gpsLocation && (
-                             <div className="mb-6 p-4 bg-yellow-900/50 border border-yellow-500 rounded-lg text-yellow-200 text-sm">
+                            <div className="mb-6 p-4 bg-yellow-50 border border-yellow-200 rounded-lg text-yellow-700 text-sm">
                                 <div className="flex items-center">
                                     <svg className="w-5 h-5 mr-2 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fillRule="evenodd" d="M8.257 3.099c.636-1.182 2.85-1.182 3.486 0l5.58 10.362c.636 1.182-.48 2.539-1.743 2.539H4.42c-1.263 0-2.379-1.357-1.743-2.539l5.58-10.362zM10 12a1 1 0 100-2 1 1 0 000 2zm0 2a1 1 0 100 2 1 1 0 000-2z" clipRule="evenodd" /></svg>
                                     {gpsError}
@@ -355,54 +336,54 @@ export default function LogMeetingPage() {
 
                     {/* Form */}
                     <form onSubmit={handleSubmit} className="p-6 space-y-6">
-                        
+
                         {/* Section 1: Doctor Information */}
                         <div className="space-y-4">
-                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-white flex items-center"}>
-                                <svg className="w-5 h-5 mr-2 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-gray-900 flex items-center"}>
+                                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
                                 Doctor Information
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 <div className="md:col-span-2">
-                                    <label className={labelStyles}>Doctor's Phone <span className="text-red-400">*</span></label>
-                                    <input 
-                                        type="tel" 
-                                        name="doctor_phone_number" 
-                                        value={formData.doctor_phone_number} 
-                                        onChange={handleChange} 
+                                    <label className={labelStyles}>Doctor's Phone <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="tel"
+                                        name="doctor_phone_number"
+                                        value={formData.doctor_phone_number}
+                                        onChange={handleChange}
                                         onBlur={fetchDoctorDetails}
-                                        maxLength={10} 
-                                        className={inputStyles} 
-                                        placeholder="10-digit phone (will auto-fill name)" 
-                                        required 
+                                        maxLength={10}
+                                        className={inputStyles}
+                                        placeholder="10-digit phone (will auto-fill name)"
+                                        required
                                         disabled={loading}
                                     />
-                                    {isFetchingDoctor && <p className="text-xs text-yellow-400 mt-1">Searching for doctor...</p>}
-                                    {doctorError && <p className="text-xs text-red-400 mt-1">{doctorError}</p>}
+                                    {isFetchingDoctor && <p className="text-xs text-yellow-600 mt-1">Searching for doctor...</p>}
+                                    {doctorError && <p className="text-xs text-red-500 mt-1">{doctorError}</p>}
                                 </div>
 
                                 <div>
-                                    <label className={labelStyles}>Doctor's Name <span className="text-red-400">*</span></label>
-                                    <input 
-                                        type="text" 
-                                        name="doctor_name" 
-                                        value={formData.doctor_name} 
-                                        onChange={handleChange} 
-                                        className={`${inputStyles} ${isDoctorFound ? 'text-gray-400' : 'text-white'}`} 
+                                    <label className={labelStyles}>Doctor's Name <span className="text-red-500">*</span></label>
+                                    <input
+                                        type="text"
+                                        name="doctor_name"
+                                        value={formData.doctor_name}
+                                        onChange={handleChange}
+                                        className={`${inputStyles} ${isDoctorFound ? 'text-gray-500 bg-gray-50' : ''}`}
                                         placeholder={"Enter doctor's full name"}
-                                        required 
+                                        required
                                         readOnly={isDoctorFound}
                                         disabled={loading}
                                     />
                                 </div>
                                 <div>
                                     <label className={labelStyles}>Locality</label>
-                                    <input 
-                                        type="text" 
-                                        name="locality" 
-                                        value={formData.locality} 
-                                        onChange={handleChange} 
-                                        className={`${inputStyles} ${isDoctorFound ? 'text-gray-400' : 'text-white'}`} 
+                                    <input
+                                        type="text"
+                                        name="locality"
+                                        value={formData.locality}
+                                        onChange={handleChange}
+                                        className={`${inputStyles} ${isDoctorFound ? 'text-gray-500 bg-gray-50' : ''}`}
                                         placeholder={"Enter clinic area or locality"}
                                         readOnly={isDoctorFound}
                                         disabled={loading}
@@ -412,9 +393,9 @@ export default function LogMeetingPage() {
                         </div>
 
                         {/* Section 2: Meeting Details */}
-                        <div className="space-y-4 pt-6 border-t border-gray-700">
-                             <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-white flex items-center"}>
-                                <svg className="w-5 h-5 mr-2 text-blue-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
+                        <div className="space-y-4 pt-6 border-t border-gray-200">
+                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-gray-900 flex items-center"}>
+                                <svg className="w-5 h-5 mr-2 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" /></svg>
                                 Meeting Details
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -430,19 +411,19 @@ export default function LogMeetingPage() {
                                     <label className={labelStyles}>Patients During Meeting</label>
                                     <input type="number" name="numPatientsDuringMeeting" value={formData.numPatientsDuringMeeting} onChange={handleChange} min="0" className={inputStyles} disabled={loading} />
                                 </div>
-                                
+
                                 <div className="md:col-span-2">
                                     <label className={labelStyles}>Facilities Available</label>
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm text-gray-200">
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-x-4 gap-y-2 text-sm text-gray-700">
                                         {FACILITIES_LIST.map(facility => (
-                                            <label key={facility} className="flex items-center space-x-2 p-2 bg-gray-700/50 rounded-lg">
-                                                <input 
-                                                    type="checkbox" 
-                                                    name="facilities" 
-                                                    value={facility} 
-                                                    checked={formData.facilities.includes(facility)} 
+                                            <label key={facility} className="flex items-center space-x-2 p-2 bg-gray-50 rounded-lg border border-gray-200">
+                                                <input
+                                                    type="checkbox"
+                                                    name="facilities"
+                                                    value={facility}
+                                                    checked={formData.facilities.includes(facility)}
                                                     onChange={handleCheckboxChange}
-                                                    className="rounded text-blue-500 bg-gray-800 border-gray-600 focus:ring-blue-500"
+                                                    className="rounded text-blue-600 border-gray-300 focus:ring-blue-500"
                                                     disabled={loading}
                                                 />
                                                 <span>{facility}</span>
@@ -453,10 +434,10 @@ export default function LogMeetingPage() {
                             </div>
                         </div>
 
-                         {/* Section 3: Notes & Vibe Check */}
-                        <div className="space-y-4 pt-6 border-t border-gray-700">
-                             <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-white flex items-center"}>
-                                <svg className="w-5 h-5 mr-2 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
+                        {/* Section 3: Notes & Vibe Check */}
+                        <div className="space-y-4 pt-6 border-t border-gray-200">
+                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-gray-900 flex items-center"}>
+                                <svg className="w-5 h-5 mr-2 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" /></svg>
                                 Notes & Vibe Check
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -490,32 +471,32 @@ export default function LogMeetingPage() {
                         </div>
 
                         {/* Section 4: Photo Proof */}
-                        <div className="space-y-4 pt-6 border-t border-gray-700">
-                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-white flex items-center"}>
-                                <svg className="w-5 h-5 mr-2 text-green-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
+                        <div className="space-y-4 pt-6 border-t border-gray-200">
+                            <h3 className={labelStyles.replace('mb-2', '') + " text-lg font-semibold text-gray-900 flex items-center"}>
+                                <svg className="w-5 h-5 mr-2 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" /><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" /></svg>
                                 Photo Proof
                             </h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                                 {/* Clinic Photo */}
                                 <div>
-                                    <label className={labelStyles}>Clinic Photo <span className="text-red-400">*</span></label>
+                                    <label className={labelStyles}>Clinic Photo <span className="text-red-500">*</span></label>
                                     {!clinicFile && (
-                                        <input 
-                                            id="clinic-upload" 
-                                            type="file" 
-                                            accept="image/*" 
-                                            capture="environment" 
-                                            onChange={(e) => handleFileChange(e, 'clinic')} 
-                                            disabled={loading} 
-                                            className={fileInputStyles} 
+                                        <input
+                                            id="clinic-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="environment"
+                                            onChange={(e) => handleFileChange(e, 'clinic')}
+                                            disabled={loading}
+                                            className={fileInputStyles}
                                         />
                                     )}
                                     {clinicFile && (
-                                        <div className="flex items-center justify-between p-2.5 bg-gray-700 rounded-lg">
-                                            <p className="text-sm text-green-400 truncate w-4/5" title={clinicFile.name}>
+                                        <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <p className="text-sm text-green-700 truncate w-4/5" title={clinicFile.name}>
                                                 {clinicFile.name}
                                             </p>
-                                            <button type="button" onClick={() => handleFileRemove('clinic')} disabled={loading} className="text-xs font-medium text-red-400 hover:text-red-300">
+                                            <button type="button" onClick={() => handleFileRemove('clinic')} disabled={loading} className="text-xs font-medium text-red-600 hover:text-red-500">
                                                 Remove
                                             </button>
                                         </div>
@@ -523,24 +504,24 @@ export default function LogMeetingPage() {
                                 </div>
                                 {/* Selfie Photo */}
                                 <div>
-                                    <label className={labelStyles}>Selfie with Clinic <span className="text-red-400">*</span></label>
+                                    <label className={labelStyles}>Selfie with Clinic <span className="text-red-500">*</span></label>
                                     {!selfieFile && (
-                                        <input 
-                                            id="selfie-upload" 
-                                            type="file" 
-                                            accept="image/*" 
-                                            capture="user" 
-                                            onChange={(e) => handleFileChange(e, 'selfie')} 
-                                            disabled={loading} 
-                                            className={fileInputStyles} 
+                                        <input
+                                            id="selfie-upload"
+                                            type="file"
+                                            accept="image/*"
+                                            capture="user"
+                                            onChange={(e) => handleFileChange(e, 'selfie')}
+                                            disabled={loading}
+                                            className={fileInputStyles}
                                         />
                                     )}
                                     {selfieFile && (
-                                        <div className="flex items-center justify-between p-2.5 bg-gray-700 rounded-lg">
-                                            <p className="text-sm text-green-400 truncate w-4/5" title={selfieFile.name}>
+                                        <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
+                                            <p className="text-sm text-green-700 truncate w-4/5" title={selfieFile.name}>
                                                 {selfieFile.name}
                                             </p>
-                                            <button type="button" onClick={() => handleFileRemove('selfie')} disabled={loading} className="text-xs font-medium text-red-400 hover:text-red-300">
+                                            <button type="button" onClick={() => handleFileRemove('selfie')} disabled={loading} className="text-xs font-medium text-red-600 hover:text-red-500">
                                                 Remove
                                             </button>
                                         </div>
@@ -550,25 +531,21 @@ export default function LogMeetingPage() {
                         </div>
 
                         {/* Submit Button */}
-                        <div className="pt-6 border-t border-gray-700">
+                        <div className="pt-6">
                             <button
                                 type="submit"
-                                disabled={loading || !!gpsError}
-                                className="w-full py-3 px-4 bg-gradient-to-r from-blue-500 to-purple-500 hover:from-blue-600 hover:to-purple-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                                disabled={loading}
+                                className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                             >
                                 {loading ? (
                                     <span className="flex items-center justify-center">
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24">
-                                            <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
-                                            <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
-                                        </svg>
+                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
                                         Submitting...
                                     </span>
-                                ) : (
-                                    "Log Meeting"
-                                )}
+                                ) : "Submit Meeting Log"}
                             </button>
                         </div>
+
                     </form>
                 </div>
             </main>

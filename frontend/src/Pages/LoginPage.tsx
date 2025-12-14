@@ -66,13 +66,13 @@ export default function LoginPage() {
 
     try {
       const response = await api.post(`/auth/verify-otp`, { phone, otp });
-      
+
       const { accessToken, refreshToken, accessTokenExpiresAt, user } = response.data.data;
 
       // Store tokens and user details
-      localStorage.setItem("authToken", accessToken); 
-      localStorage.setItem("refreshToken", refreshToken); 
-      localStorage.setItem("authTokenExpiry", accessTokenExpiresAt); 
+      localStorage.setItem("authToken", accessToken);
+      localStorage.setItem("refreshToken", refreshToken);
+      localStorage.setItem("authTokenExpiry", accessTokenExpiresAt);
       localStorage.setItem("user", JSON.stringify(user));
 
       setSuccess("Login successful!");
@@ -94,28 +94,27 @@ export default function LoginPage() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col md:flex-row bg-gray-900">
-      
+    <div className="min-h-screen flex flex-col md:flex-row bg-gray-50">
+
       {/* 1. Left "Brand" Column (Shows on desktop, hidden on mobile) */}
-      <div className="hidden md:flex md:w-1/2 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 p-8 flex-col justify-center items-center text-center">
+      <div className="hidden md:flex md:w-1/2 bg-blue-600 p-8 flex-col justify-center items-center text-center">
         {/* Logo Removed */}
         <h1 className="text-6xl font-bold text-white mb-3 tracking-tight">Medpho CRM</h1>
-        
+        <p className="text-blue-100 text-xl">Healthcare Operations Portal <span className="text-xs bg-blue-500 px-2 py-1 rounded-full ml-2">v2.0 Light</span></p>
       </div>
 
       {/* 2. Right "Form" Column (Takes full width on mobile) */}
-      <div className="w-full md:w-1/2 min-h-screen flex items-center justify-center bg-gray-800 p-4">
-        <div 
-          className={`w-full max-w-md transition-all duration-400 ${
-            isExiting ? 'opacity-0 -translate-y-2' : 'opacity-100 translate-y-0'
-          }`}
+      <div className="w-full md:w-1/2 min-h-screen flex items-center justify-center bg-gray-50 p-4">
+        <div
+          className={`w-full max-w-md transition-all duration-400 ${isExiting ? 'opacity-0 -translate-y-2' : 'opacity-100 translate-y-0'
+            }`}
         >
-          <div className="bg-gray-800 rounded-2xl md:shadow-2xl md:overflow-hidden md:border md:border-gray-700">
+          <div className="bg-white rounded-2xl md:shadow-xl md:overflow-hidden md:border md:border-gray-100">
             {/* Header (Shows on mobile, hidden on desktop) */}
-            <div className="md:hidden bg-gradient-to-r from-cyan-500 to-blue-500 px-6 py-10 text-center rounded-t-2xl">
-               {/* Logo Removed */}
+            <div className="md:hidden bg-blue-600 px-6 py-10 text-center rounded-t-2xl">
+              {/* Logo Removed */}
               <h2 className="text-3xl font-bold text-white">Medpho CRM</h2>
-              <p className="text-cyan-100 mt-2">Healthcare Operations Portal</p>
+              <p className="text-blue-100 mt-2">Healthcare Operations Portal</p>
             </div>
 
             {/* Content */}
@@ -145,7 +144,7 @@ export default function LoginPage() {
               {!showOtpInput ? (
                 <form onSubmit={handleSendOtp} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Mobile Number
                     </label>
                     <div className="relative">
@@ -159,7 +158,7 @@ export default function LoginPage() {
                         value={phone}
                         onChange={(e) => setPhone(e.target.value)}
                         placeholder="Enter 10-digit phone number"
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all"
                         maxLength={10}
                         autoFocus
                         required
@@ -170,7 +169,7 @@ export default function LoginPage() {
                   <button
                     type="submit"
                     disabled={resendLoading}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     {resendLoading ? (
                       <span className="flex items-center justify-center">
@@ -188,24 +187,24 @@ export default function LoginPage() {
               ) : (
                 <form onSubmit={handleLogin} className="space-y-6">
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Phone Number
                     </label>
                     <input
                       type="tel"
                       value={phone}
-                      className="w-full px-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-gray-400 cursor-not-allowed"
+                      className="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-lg text-gray-500 cursor-not-allowed"
                       disabled
                     />
                   </div>
 
                   <div>
-                    <label className="block text-sm font-medium text-gray-300 mb-2">
+                    <label className="block text-sm font-medium text-gray-700 mb-2">
                       Enter OTP
                     </label>
                     <div className="relative">
                       <div className="absolute inset-y-0 left-0 pl-3 flex items-center pointer-events-none">
-                        <svg className="h-5 w-5 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <svg className="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
                         </svg>
                       </div>
@@ -214,7 +213,7 @@ export default function LoginPage() {
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         placeholder="Enter 6-digit OTP"
-                        className="w-full pl-10 pr-4 py-3 bg-gray-700 border border-gray-600 rounded-lg text-white placeholder-gray-400 focus:ring-2 focus:ring-cyan-500 focus:border-transparent transition-all tracking-widest text-center text-lg font-semibold"
+                        className="w-full pl-10 pr-4 py-3 bg-white border border-gray-300 rounded-lg text-gray-900 placeholder-gray-400 focus:ring-2 focus:ring-blue-500 focus:border-transparent transition-all tracking-widest text-center text-lg font-semibold"
                         maxLength={6}
                         autoFocus
                         required
@@ -227,20 +226,20 @@ export default function LoginPage() {
                       type="button"
                       onClick={() => handleSendOtp()}
                       disabled={countdown > 0 || resendLoading}
-                      className="text-sm text-cyan-400 hover:text-cyan-300 disabled:text-gray-500 disabled:cursor-not-allowed transition-colors font-medium"
+                      className="text-sm text-blue-600 hover:text-blue-500 disabled:text-gray-400 disabled:cursor-not-allowed transition-colors font-medium"
                     >
                       {resendLoading
                         ? "Sending..."
                         : countdown > 0
-                        ? `Resend OTP in ${countdown}s`
-                        : "Resend OTP"}
+                          ? `Resend OTP in ${countdown}s`
+                          : "Resend OTP"}
                     </button>
                   </div>
 
                   <button
                     type="submit"
                     disabled={loading || resendLoading}
-                    className="w-full py-3 px-4 bg-gradient-to-r from-cyan-500 to-blue-500 hover:from-cyan-600 hover:to-blue-600 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
+                    className="w-full py-3 px-4 bg-blue-600 hover:bg-blue-700 text-white font-semibold rounded-lg shadow-md transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                   >
                     {loading ? (
                       <span className="flex items-center justify-center">
@@ -259,7 +258,7 @@ export default function LoginPage() {
             </div>
 
             {/* Footer */}
-            <div className="p-6 text-center text-sm text-gray-500 border-t border-gray-700 md:border-none">
+            <div className="p-6 text-center text-sm text-gray-500 border-t border-gray-100 md:border-none">
               <p>© 2025 Medpho Healthcare. All rights reserved.</p>
             </div>
           </div>
