@@ -37,7 +37,6 @@ function Home() {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-blue-600 transition-colors">Book OPD Appointment</h3>
-              <p className="text-sm text-gray-500 mb-4">Schedule new outpatient department appointments efficiently.</p>
               <div className="flex items-center text-blue-600 font-medium text-sm group-hover:underline">
                 Start Booking
                 <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -55,7 +54,6 @@ function Home() {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-purple-600 transition-colors">Log Doctor Meeting</h3>
-              <p className="text-sm text-gray-500 mb-4">Record details and outcomes of your meetings with doctors.</p>
               <div className="flex items-center text-purple-600 font-medium text-sm group-hover:underline">
                 Log Now
                 <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -73,7 +71,6 @@ function Home() {
                 </svg>
               </div>
               <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-amber-600 transition-colors">Update Patient Phone</h3>
-              <p className="text-sm text-gray-500 mb-4">Correct or update patient contact information securely.</p>
               <div className="flex items-center text-amber-600 font-medium text-sm group-hover:underline">
                 Update Phone
                 <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>
@@ -92,7 +89,6 @@ function Home() {
                   </svg>
                 </div>
                 <h3 className="text-lg font-bold text-gray-900 mb-2 group-hover:text-green-600 transition-colors">Update Disposition</h3>
-                <p className="text-sm text-gray-500 mb-4">Manage and update patient status dispositions.</p>
                 <div className="flex items-center text-green-600 font-medium text-sm group-hover:underline">
                   Update Disposition
                   <svg className="w-4 h-4 ml-1 transform group-hover:translate-x-1 transition-transform" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8l4 4m0 0l-4 4m4-4H3" /></svg>

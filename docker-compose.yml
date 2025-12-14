@@ -58,7 +58,7 @@ services:
       medpho_db:
         condition: service_healthy
 
-  # 4. --- NEW frontend_app SERVICE ---
+
   frontend_app:
     build:
       context: ./frontend
@@ -70,7 +70,7 @@ services:
       - medpho_net
     restart: unless-stopped
     depends_on:
-      - backend_app # Waits for the backend to be ready
+      - backend_app 
 
 volumes:
   metabase_data:

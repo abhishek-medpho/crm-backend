@@ -306,8 +306,8 @@ export default function BookOpdPage() {
     setSuccessData(null);
 
     // Basic Validation
-    if (!formData.patient_name || !formData.patient_phone || !formData.hospital_ids.length || !formData.medical_condition) {
-      setError("Please fill all required fields.");
+    if (!formData.patient_name || !formData.patient_phone || !formData.hospital_ids.length || !formData.medical_condition || !aadharFile) {
+      setError("Please fill all required fields, including Aadhar card.");
       setLoading(false);
       return;
     }
@@ -317,17 +317,19 @@ export default function BookOpdPage() {
       const typedKey = key as keyof OpdFormData;
       if (typedKey === "hospital_ids") {
         submissionFormData.append("hospital_ids", formData.hospital_ids.join(","));
-      } else if (typedKey !== "hospital_name") {
-        // Exclude hospital_name (display only)
+      } else if (typedKey === "hospital_name") {
+        // Backend requires hospital_name string
+        submissionFormData.append("hospital_name", formData.hospital_name.join(", "));
+      } else {
         submissionFormData.append(key, formData[typedKey] as string);
       }
     });
 
-    if (aadharFile) submissionFormData.append("aadhar_file", aadharFile);
-    if (pmjayFile) submissionFormData.append("pmjay_file", pmjayFile);
+    if (aadharFile) submissionFormData.append("aadhar_document", aadharFile);
+    if (pmjayFile) submissionFormData.append("pmjay_document", pmjayFile);
 
     try {
-      const response = await api.post("/patientLeads/book-opd", submissionFormData, {
+      const response = await api.post("/patientLeads/create-web", submissionFormData, {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
@@ -579,7 +581,7 @@ export default function BookOpdPage() {
               <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Documents</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <label className={labelStyles}>Aadhar Card</label>
+                  <label className={labelStyles}>Aadhar Card <span className="text-red-500">*</span></label>
                   {!aadharFile ? (
                     <input id="aadhar-upload" type="file" accept="image/*,application/pdf" onChange={(e) => handleFileChange(e, 'aadhar')} className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-semibold file:bg-blue-50 file:text-blue-700 hover:file:bg-blue-100 transition-all" disabled={loading} />
                   ) : (
