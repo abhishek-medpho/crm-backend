@@ -34,9 +34,6 @@ export default function Header({ showBack = false }: HeaderProps) {
                         )}
 
                         <div className="flex items-center gap-2">
-                            <div className="w-8 h-8 bg-blue-600 rounded-lg flex items-center justify-center text-white font-bold text-lg shadow-md">
-                                M
-                            </div>
                             <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500 hidden sm:block">
                                 Medpho CRM
                             </span>
