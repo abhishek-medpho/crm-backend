@@ -98,7 +98,7 @@ export default function LoginPage() {
 
       {/* 1. Left "Brand" Column (Shows on desktop, hidden on mobile) */}
       <div className="hidden md:flex md:w-1/2 bg-blue-600 p-8 flex-col justify-center items-center text-center">
-       
+
         <h1 className="text-6xl font-bold text-white mb-3 tracking-tight">Medpho CRM</h1>
         <p className="text-blue-100 text-xl">Healthcare Operations Portal</p>
       </div>
@@ -210,6 +210,9 @@ export default function LoginPage() {
                       </div>
                       <input
                         type="text"
+                        inputMode="numeric"
+                        pattern="[0-9]*"
+                        autoComplete="one-time-code"
                         value={otp}
                         onChange={(e) => setOtp(e.target.value)}
                         placeholder="Enter 6-digit OTP"
