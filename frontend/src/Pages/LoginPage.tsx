@@ -98,9 +98,9 @@ export default function LoginPage() {
 
       {/* 1. Left "Brand" Column (Shows on desktop, hidden on mobile) */}
       <div className="hidden md:flex md:w-1/2 bg-blue-600 p-8 flex-col justify-center items-center text-center">
-        {/* Logo Removed */}
+       
         <h1 className="text-6xl font-bold text-white mb-3 tracking-tight">Medpho CRM</h1>
-        <p className="text-blue-100 text-xl">Healthcare Operations Portal <span className="text-xs bg-blue-500 px-2 py-1 rounded-full ml-2">v2.0 Light</span></p>
+        <p className="text-blue-100 text-xl">Healthcare Operations Portal</p>
       </div>
 
       {/* 2. Right "Form" Column (Takes full width on mobile) */}
