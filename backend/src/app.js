@@ -5,12 +5,12 @@ import cors from "cors";
 const app = express();
 
 
-// const whitelist = [
-//   "http://localhost:5173", // Local dev
-//   "http://localhost",      // Docker production (Nginx)
-//   "http://YOUR_AWS_PUBLIC_IP", // Your AWS IP or Domain
-//   "http://YOUR_DOMAIN.com"
-// ];
+const whitelist = [
+  "http://localhost",
+  "http://localhost:9001",      // Add for local testing
+  "http://44.203.95.56:9001",    
+  "http://your-domain.com:9001" // 
+];
 
 const corsOptions = {
   origin: function (origin, callback) {
