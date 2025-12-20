@@ -43,6 +43,14 @@ export default function LogMeetingPage() {
     const [clinicFile, setClinicFile] = useState<File | null>(null);
     const [selfieFile, setSelfieFile] = useState<File | null>(null);
 
+    // --- State for photo preview URLs ---
+    const [clinicPreviewUrl, setClinicPreviewUrl] = useState<string | null>(null);
+    const [selfiePreviewUrl, setSelfiePreviewUrl] = useState<string | null>(null);
+
+    // --- State for photo capture timestamps ---
+    const [clinicCaptureTime, setClinicCaptureTime] = useState<Date | null>(null);
+    const [selfieCaptureTime, setSelfieCaptureTime] = useState<Date | null>(null);
+
     // --- State for GPS ---
     const [gpsLocation, setGpsLocation] = useState<{ lat: number, lon: number } | null>(null);
     const [gpsError, setGpsError] = useState('');
@@ -135,27 +143,138 @@ export default function LogMeetingPage() {
         }
     };
 
-    // --- 8. File change and remove handlers ---
-    const handleFileChange = (
+    // --- 9. Function to process image with metadata overlay ---
+    const processImageWithMetadata = async (
+        file: File,
+        gpsLat: number,
+        gpsLon: number,
+        timestamp: Date
+    ): Promise<File> => {
+        return new Promise((resolve, reject) => {
+            const img = new Image();
+            const reader = new FileReader();
+
+            reader.onload = (e) => {
+                img.onload = () => {
+                    // Create canvas with same dimensions as image
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    if (!ctx) {
+                        reject(new Error('Could not get canvas context'));
+                        return;
+                    }
+
+                    canvas.width = img.width;
+                    canvas.height = img.height;
+
+                    // Draw original image
+                    ctx.drawImage(img, 0, 0);
+
+                    // Calculate font size based on image width (responsive)
+                    const fontSize = Math.max(12, Math.floor(img.width / 30));
+                    const padding = fontSize;
+                    const lineHeight = fontSize * 1.4;
+
+                    // Draw semi-transparent black background for text
+                    const textBoxHeight = lineHeight * 2 + padding * 2;
+                    ctx.fillStyle = 'rgba(0, 0, 0, 0.7)';
+                    ctx.fillRect(0, img.height - textBoxHeight, img.width, textBoxHeight);
+
+                    // Draw GPS coordinates
+                    ctx.fillStyle = 'white';
+                    ctx.font = `${fontSize}px Arial, sans-serif`;
+                    const gpsText = `GPS: ${gpsLat.toFixed(6)}, ${gpsLon.toFixed(6)}`;
+                    ctx.fillText(gpsText, padding, img.height - textBoxHeight + padding + fontSize);
+
+                    // Draw timestamp
+                    const timeText = `Time: ${timestamp.toLocaleString()}`;
+                    ctx.fillText(timeText, padding, img.height - textBoxHeight + padding + fontSize + lineHeight);
+
+                    // Convert canvas to blob
+                    canvas.toBlob((blob) => {
+                        if (blob) {
+                            // Create new file from blob with original filename
+                            const processedFile = new File([blob], file.name, {
+                                type: file.type,
+                                lastModified: Date.now()
+                            });
+                            resolve(processedFile);
+                        } else {
+                            reject(new Error('Could not convert canvas to blob'));
+                        }
+                    }, file.type);
+                };
+
+                img.onerror = () => reject(new Error('Could not load image'));
+                img.src = e.target?.result as string;
+            };
+
+            reader.onerror = () => reject(new Error('Could not read file'));
+            reader.readAsDataURL(file);
+        });
+    };
+
+    // --- 10. File change and remove handlers ---
+    const handleFileChange = async (
         e: React.ChangeEvent<HTMLInputElement>,
         docType: 'clinic' | 'selfie'
     ) => {
         const file = e.target.files ? e.target.files[0] : null;
-        if (docType === 'clinic') {
-            setClinicFile(file);
-        } else {
-            setSelfieFile(file);
+        if (!file) return;
+
+        if (!gpsLocation) {
+            setError('GPS location not available. Please enable location and refresh.');
+            return;
+        }
+
+        const captureTime = new Date();
+
+        try {
+            // Process image with metadata embedded
+            const processedFile = await processImageWithMetadata(
+                file,
+                gpsLocation.lat,
+                gpsLocation.lon,
+                captureTime
+            );
+
+            if (docType === 'clinic') {
+                setClinicFile(processedFile);
+                const previewUrl = URL.createObjectURL(processedFile);
+                setClinicPreviewUrl(previewUrl);
+                setClinicCaptureTime(captureTime);
+            } else {
+                setSelfieFile(processedFile);
+                const previewUrl = URL.createObjectURL(processedFile);
+                setSelfiePreviewUrl(previewUrl);
+                setSelfieCaptureTime(captureTime);
+            }
+        } catch (err) {
+            console.error('Error processing image:', err);
+            setError('Failed to process image. Please try again.');
         }
     };
 
     const handleFileRemove = (docType: 'clinic' | 'selfie') => {
         if (docType === 'clinic') {
+            // Clean up preview URL
+            if (clinicPreviewUrl) {
+                URL.revokeObjectURL(clinicPreviewUrl);
+                setClinicPreviewUrl(null);
+            }
             setClinicFile(null);
+            setClinicCaptureTime(null);
             const input = document.getElementById('clinic-upload') as HTMLInputElement;
             if (input) input.value = "";
         }
         if (docType === 'selfie') {
+            // Clean up preview URL
+            if (selfiePreviewUrl) {
+                URL.revokeObjectURL(selfiePreviewUrl);
+                setSelfiePreviewUrl(null);
+            }
             setSelfieFile(null);
+            setSelfieCaptureTime(null);
             const input = document.getElementById('selfie-upload') as HTMLInputElement;
             if (input) input.value = "";
         }
@@ -491,13 +610,46 @@ export default function LogMeetingPage() {
                                             className={fileInputStyles}
                                         />
                                     )}
-                                    {clinicFile && (
-                                        <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-                                            <p className="text-sm text-green-700 truncate w-4/5" title={clinicFile.name}>
-                                                {clinicFile.name}
-                                            </p>
-                                            <button type="button" onClick={() => handleFileRemove('clinic')} disabled={loading} className="text-xs font-medium text-red-600 hover:text-red-500">
-                                                Remove
+                                    {clinicFile && clinicPreviewUrl && (
+                                        <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
+                                            <img
+                                                src={clinicPreviewUrl}
+                                                alt="Clinic Preview"
+                                                className="w-full h-64 object-cover"
+                                            />
+                                            {/* Overlay with GPS and Timestamp */}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-3 text-xs">
+                                                <div className="flex flex-col gap-1">
+                                                    {gpsLocation && (
+                                                        <div className="flex items-center gap-1">
+                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span>GPS: {gpsLocation.lat.toFixed(6)}, {gpsLocation.lon.toFixed(6)}</span>
+                                                        </div>
+                                                    )}
+                                                    {clinicCaptureTime && (
+                                                        <div className="flex items-center gap-1">
+                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span>Time: {clinicCaptureTime.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Retake Button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFileRemove('clinic')}
+                                                disabled={loading}
+                                                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-lg transition-colors text-sm flex items-center gap-1"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Retake
                                             </button>
                                         </div>
                                     )}
@@ -516,13 +668,46 @@ export default function LogMeetingPage() {
                                             className={fileInputStyles}
                                         />
                                     )}
-                                    {selfieFile && (
-                                        <div className="flex items-center justify-between p-2.5 bg-gray-50 border border-gray-200 rounded-lg">
-                                            <p className="text-sm text-green-700 truncate w-4/5" title={selfieFile.name}>
-                                                {selfieFile.name}
-                                            </p>
-                                            <button type="button" onClick={() => handleFileRemove('selfie')} disabled={loading} className="text-xs font-medium text-red-600 hover:text-red-500">
-                                                Remove
+                                    {selfieFile && selfiePreviewUrl && (
+                                        <div className="relative border-2 border-gray-300 rounded-lg overflow-hidden">
+                                            <img
+                                                src={selfiePreviewUrl}
+                                                alt="Selfie Preview"
+                                                className="w-full h-64 object-cover"
+                                            />
+                                            {/* Overlay with GPS and Timestamp */}
+                                            <div className="absolute bottom-0 left-0 right-0 bg-black/70 text-white p-3 text-xs">
+                                                <div className="flex flex-col gap-1">
+                                                    {gpsLocation && (
+                                                        <div className="flex items-center gap-1">
+                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span>GPS: {gpsLocation.lat.toFixed(6)}, {gpsLocation.lon.toFixed(6)}</span>
+                                                        </div>
+                                                    )}
+                                                    {selfieCaptureTime && (
+                                                        <div className="flex items-center gap-1">
+                                                            <svg className="w-3 h-3" fill="currentColor" viewBox="0 0 20 20">
+                                                                <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clipRule="evenodd" />
+                                                            </svg>
+                                                            <span>Time: {selfieCaptureTime.toLocaleString()}</span>
+                                                        </div>
+                                                    )}
+                                                </div>
+                                            </div>
+                                            {/* Retake Button */}
+                                            <button
+                                                type="button"
+                                                onClick={() => handleFileRemove('selfie')}
+                                                disabled={loading}
+                                                className="absolute top-2 right-2 bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-1.5 rounded-lg shadow-lg transition-colors text-sm flex items-center gap-1"
+                                            >
+                                                <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 9a2 2 0 012-2h.93a2 2 0 001.664-.89l.812-1.22A2 2 0 0110.07 4h3.86a2 2 0 011.664.89l.812 1.22A2 2 0 0018.07 7H19a2 2 0 012 2v9a2 2 0 01-2 2H5a2 2 0 01-2-2V9z" />
+                                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 13a3 3 0 11-6 0 3 3 0 016 0z" />
+                                                </svg>
+                                                Retake
                                             </button>
                                         </div>
                                     )}
