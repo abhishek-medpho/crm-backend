@@ -22,6 +22,13 @@ export default function LoginPage() {
     }
   }, [countdown]);
 
+  useEffect(() => {
+    const token = localStorage.getItem("authToken");
+    if (token) {
+      navigate("/", { replace: true });
+    }
+  }, [navigate]);
+
   const validatePhone = (phone: string) => /^\d{10}$/.test(phone);
   const validateOtp = (otp: string) => /^\d{4,6}$/.test(otp);
 
@@ -76,8 +83,9 @@ export default function LoginPage() {
       localStorage.setItem("user", JSON.stringify(user));
 
       setSuccess("Login successful!");
+      setSuccess("Login successful!");
       setIsExiting(true);
-      setTimeout(() => navigate("/"), 400);
+      setTimeout(() => navigate("/", { replace: true }), 400);
     } catch (err) {
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 401) {
