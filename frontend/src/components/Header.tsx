@@ -12,7 +12,7 @@ export default function Header({ showBack = false }: HeaderProps) {
     const handleLogout = () => {
         localStorage.removeItem('authToken');
         localStorage.removeItem('user');
-        window.location.href = '/login';
+        navigate('/login', { replace: true });
     };
 
     return (
