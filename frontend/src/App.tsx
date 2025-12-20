@@ -15,12 +15,12 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
   const user = userString ? JSON.parse(userString) : {};
 
   if (!token) {
-    return <Navigate to="/login" />;
+    return <Navigate to="/login" replace />;
   }
 
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
-    return <Navigate to="/" />;
+    return <Navigate to="/" replace />;
   }
 
   return <>{children}</>;
