@@ -446,6 +446,18 @@ export default function BookOpdPage() {
                     <option value="Other">Other</option>
                   </select>
                 </div>
+                <div>
+                  <label className={labelStyles}>Panel <span className="text-red-500">*</span></label>
+                  <select name="panel" value={formData.panel} onChange={handleChange} className={selectStyles} required disabled={loading}>
+                    <option value="">Select Panel</option>
+                     <option value="Corporate">Cash</option>
+                    <option value="Ayushman/PMJAY">Ayushman/PMJAY</option>
+                    <option value="General">General</option>
+                    <option value="Panel">Panel</option>
+                    <option value="Insurance">Insurance</option>
+                    <option value="Corporate">Corporate</option>                
+                  </select>
+                </div>
               </div>
             </div>
 
@@ -623,7 +635,7 @@ export default function BookOpdPage() {
 
           </form>
         </div>
-      </main>
-    </div>
+      </main >
+    </div >
   );
 }
