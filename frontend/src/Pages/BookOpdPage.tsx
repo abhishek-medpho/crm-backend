@@ -26,6 +26,8 @@ interface OpdFormData {
   patient_phone: string;
   referee_name: string;
   refree_phone_no: string;
+  patient_referral_name: string;
+  patient_referral_phone: string;
   hospital_name: string[]; // For display/search
   hospital_ids: string[];  // For backend logic
   medical_condition: string;
@@ -36,6 +38,7 @@ interface OpdFormData {
   appointment_date: string;
   appointment_time: string;
   current_disposition: string;
+  source: string;
 }
 
 export default function BookOpdPage() {
@@ -57,6 +60,8 @@ export default function BookOpdPage() {
     patient_phone: "",
     referee_name: "",
     refree_phone_no: "",
+    patient_referral_name: "",
+    patient_referral_phone: "",
     hospital_name: [],
     hospital_ids: [],
     medical_condition: "",
@@ -67,6 +72,7 @@ export default function BookOpdPage() {
     appointment_date: getTodayDate(),
     appointment_time: getCurrentTime(),
     current_disposition: "opd_booked",
+    source: "Doctor Referral",
   });
 
   // --- 3. State for UI and errors ---
@@ -265,8 +271,8 @@ export default function BookOpdPage() {
       const res = await api.get(`/doctors/get-by-phone/${phone}`);
       setFormData((prev) => ({ ...prev, referee_name: res.data.data.name }));
     } catch {
-      setDoctorError("Doctor not found.");
-      setFormData((prev) => ({ ...prev, referee_name: "" }));
+      setDoctorError("Doctor not found. You can enter the doctor's name manually.");
+      // Don't clear the name field - allow manual entry
     } finally {
       setIsFetchingDoctor(false);
     }
@@ -280,6 +286,8 @@ export default function BookOpdPage() {
       patient_phone: "",
       referee_name: "",
       refree_phone_no: "",
+      patient_referral_name: "",
+      patient_referral_phone: "",
       hospital_name: [],
       hospital_ids: [],
       medical_condition: "",
@@ -290,6 +298,7 @@ export default function BookOpdPage() {
       appointment_date: getTodayDate(),
       appointment_time: getCurrentTime(),
       current_disposition: "opd_booked",
+      source: "Doctor Referral",
     });
     setAadharFile(null);
     setPmjayFile(null);
@@ -450,12 +459,12 @@ export default function BookOpdPage() {
                   <label className={labelStyles}>Panel <span className="text-red-500">*</span></label>
                   <select name="panel" value={formData.panel} onChange={handleChange} className={selectStyles} required disabled={loading}>
                     <option value="">Select Panel</option>
-                     <option value="Corporate">Cash</option>
-                    <option value="Ayushman/PMJAY">Ayushman/PMJAY</option>
-                    <option value="General">General</option>
-                    <option value="Panel">Panel</option>
-                    <option value="Insurance">Insurance</option>
-                    <option value="Corporate">Corporate</option>                
+                    <option value="Cash">Cash</option>
+                    <option value="Ayushman">Ayushman</option>
+                    <option value="TPA">TPA</option>
+                    <option value="CM Fund">CM Fund</option>
+                    <option value="NGO Fund">NGO Fund</option>
+                    <option value="Aadhar Card">Aadhar Card</option>
                   </select>
                 </div>
               </div>
@@ -571,24 +580,94 @@ export default function BookOpdPage() {
               </div>
             </div>
 
-            {/* Section 4: Referee Info */}
+
+            {/* Section 4: Source Selection */}
             <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Referee Information</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                  <label className={labelStyles}>Doctor's Phone (Auto-fill)</label>
-                  <input type="tel" name="refree_phone_no" value={formData.refree_phone_no} onChange={handleChange} onBlur={fetchDoctorName} maxLength={10} className={inputStyles} placeholder="10-digit number" disabled={loading} />
-                  {isFetchingDoctor && <p className="text-xs text-blue-500 mt-1">Fetching doctor name...</p>}
-                  {doctorError && <p className="text-xs text-red-500 mt-1">{doctorError}</p>}
-                </div>
-                <div>
-                  <label className={labelStyles}>Doctor's Name</label>
-                  <input type="text" name="referee_name" value={formData.referee_name} onChange={handleChange} className={`${inputStyles} bg-gray-50`} placeholder="Doctor Name" readOnly disabled={loading} />
-                </div>
+              <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Source</h3>
+              <div>
+                <label className={labelStyles}>Select Source <span className="text-red-500">*</span></label>
+                <select
+                  name="source"
+                  value={formData.source}
+                  onChange={handleChange}
+                  className={selectStyles}
+                  required
+                  disabled={loading}
+                >
+                  <option value="Doctor Referral">Doctor Referral</option>
+                  <option value="Patient Referral">Patient Referral</option>
+                  <option value="Self">Self</option>
+                  <option value="Inbound">Inbound</option>
+                  <option value="Facebook">Facebook</option>
+                  <option value="Whatsapp/Community">Whatsapp/Community</option>
+                </select>
               </div>
             </div>
 
-            {/* Section 5: Documents */}
+            {/* Section 5: Referee Info (Conditional) */}
+            {formData.source === "Doctor Referral" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Doctor Referral Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelStyles}>Doctor's Phone (Auto-fill)</label>
+                    <input type="tel" name="refree_phone_no" value={formData.refree_phone_no} onChange={handleChange} onBlur={fetchDoctorName} maxLength={10} className={inputStyles} placeholder="10-digit number" disabled={loading} />
+                    {isFetchingDoctor && <p className="text-xs text-blue-500 mt-1">Fetching doctor name...</p>}
+                    {doctorError && <p className="text-xs text-amber-600 mt-1">{doctorError}</p>}
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Doctor's Name</label>
+                    <input
+                      type="text"
+                      name="referee_name"
+                      value={formData.referee_name}
+                      onChange={handleChange}
+                      className={doctorError ? inputStyles : `${inputStyles} bg-gray-50`}
+                      placeholder="Doctor Name"
+                      readOnly={!doctorError && formData.referee_name !== ""}
+                      disabled={loading}
+                    />
+                    {doctorError && <p className="text-xs text-gray-500 mt-1">Enter doctor's name manually</p>}
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section 5b: Patient Referral Info (Conditional) */}
+            {formData.source === "Patient Referral" && (
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Patient Referral Information</h3>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelStyles}>Referring Patient's Name</label>
+                    <input
+                      type="text"
+                      name="patient_referral_name"
+                      value={formData.patient_referral_name}
+                      onChange={handleChange}
+                      className={inputStyles}
+                      placeholder="Full name of referring patient"
+                      disabled={loading}
+                    />
+                  </div>
+                  <div>
+                    <label className={labelStyles}>Referring Patient's Phone</label>
+                    <input
+                      type="tel"
+                      name="patient_referral_phone"
+                      value={formData.patient_referral_phone}
+                      onChange={handleChange}
+                      maxLength={10}
+                      className={inputStyles}
+                      placeholder="10-digit number"
+                      disabled={loading}
+                    />
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* Section 6: Documents */}
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-gray-900 border-b border-gray-200 pb-2 mb-4">Documents</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

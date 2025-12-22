@@ -4,17 +4,17 @@ import { process_phone_no, processString, processTimeStamp, getIndianTimeISO } f
 import { pool } from "../DB/db.js";
 import readCsvFile from "../helper/read_csv.helper.js";
 import apiError from "../utils/apiError.utils.js";
-import { addToSheetQueue } from "../utils/sheetQueue.util.js"; 
-import { uploadAndGetLink } from "../utils/driveUploader.utils.js"; 
-import fs from "fs/promises"; 
+import { addToSheetQueue } from "../utils/sheetQueue.util.js";
+import { uploadAndGetLink } from "../utils/driveUploader.utils.js";
+import fs from "fs/promises";
 import path from "path";
 import { logAudit } from "../utils/auditLogger.util.js";
-import { 
-    sendOpdNotifications, 
-    fetchQrCodeUrl, 
-    sendAiSensy, 
+import {
+    sendOpdNotifications,
+    fetchQrCodeUrl,
+    sendAiSensy,
     sendDispositionUpdateNotifications,
-    sendPhoneUpdateNotifications 
+    sendPhoneUpdateNotifications
 } from "../utils/notification.util.js";
 
 export default class patientLeadController {
@@ -29,7 +29,7 @@ export default class patientLeadController {
 
         hospital_name = processString(hospital_name);
 
-        if (!refree_phone_no || !ndm_contact || !patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference ) {
+        if (!refree_phone_no || !ndm_contact || !patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference) {
             throw new apiError(400, "Missing required fields.");
         }
 
@@ -73,74 +73,115 @@ export default class patientLeadController {
 
         res.status(201).json(new apiResponse(201, newOPD.rows[0], `OPD Booking ${booking_reference} created.`));
     });
-  
+
     createOpdBookingFromWeb = asyncHandler(async (req, res, next) => {
-        const loggedInUser = req.user; 
+        const loggedInUser = req.user;
         if (!loggedInUser) throw new apiError(401, "User not authenticated");
-        
+
         let {
             hospital_name, hospital_ids,
             refree_phone_no, referee_name, patient_name, patient_phone,
+            patient_referral_name, patient_referral_phone,
             city, age: _age, gender, medical_condition, panel,
             booking_reference, appointment_date, appointment_time,
-            current_disposition
+            current_disposition, source
         } = req.body;
 
         hospital_name = processString(hospital_name);
 
-        if (!refree_phone_no || !patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference || !appointment_date || !appointment_time) {
+        // Make doctor fields optional - only required if not provided
+        if (!patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference || !appointment_date || !appointment_time || !source) {
             throw new apiError(400, "Missing required fields.");
         }
 
         const hospitalIdsArray = Array.isArray(hospital_ids) ? hospital_ids : (hospital_ids ? [hospital_ids] : []);
         const ndm_contact_processed = process_phone_no(loggedInUser.phone);
         const patient_phone_processed = process_phone_no(patient_phone);
-        const refree_phone_processed = process_phone_no(refree_phone_no);
+        const refree_phone_processed = refree_phone_no ? process_phone_no(refree_phone_no) : null;
+        const patient_referral_phone_processed = patient_referral_phone ? process_phone_no(patient_referral_phone) : null;
 
         let age = null;
         if (_age !== "N/A" && _age) {
             const parsedAge = parseInt(_age, 10);
             if (!isNaN(parsedAge) && parsedAge > 0 && parsedAge < 120) age = parsedAge;
         }
-        
+
         const created_at = getIndianTimeISO();
         const last_interaction_date = created_at;
 
-        const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [refree_phone_processed]);
-        if (doctor.rows.length === 0) throw new apiError(404, `Referee Doctor not found: ${refree_phone_no}`);
-        const referee_id = doctor.rows[0].id;
+        // Helper function to get or create external referee
+        const getOrCreateReferee = async (phone, name, type) => {
+            if (!phone || !name) return null;
+
+            // If type is doctor, check doctors table first
+            if (type === 'doctor') {
+                const doctorCheck = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]);
+                if (doctorCheck.rows.length > 0) {
+                    return doctorCheck.rows[0].id;
+                }
+            }
+
+            // Check if already exists in external_referees
+            const externalCheck = await pool.query(
+                "SELECT id FROM external_referees WHERE phone = $1",
+                [phone]
+            );
+
+            if (externalCheck.rows.length > 0) {
+                return externalCheck.rows[0].id;
+            }
+
+            // Create new external referee
+            const newReferee = await pool.query(
+                `INSERT INTO external_referees (name, phone, referee_type, created_at, updated_at)
+                 VALUES ($1, $2, $3, $4, $5)
+                 RETURNING id`,
+                [name, phone, type, created_at, created_at]
+            );
+
+            return newReferee.rows[0].id;
+        };
+
+        // Get referee_id based on source type
+        let referee_id = null;
+        if (source === "Doctor Referral" && refree_phone_processed && referee_name) {
+            referee_id = await getOrCreateReferee(refree_phone_processed, referee_name, 'doctor');
+        } else if (source === "Patient Referral" && patient_referral_phone_processed && patient_referral_name) {
+            referee_id = await getOrCreateReferee(patient_referral_phone_processed, patient_referral_name, 'patient');
+        }
+
         const created_by_agent_id = loggedInUser.id;
 
         const newOPD = await pool.query(
             `INSERT INTO opd_bookings (
-                booking_reference, patient_name, patient_phone, age, gender, 
-                medical_condition, hospital_name, hospital_ids, appointment_date, appointment_time, 
-                current_disposition, aadhar_card_url, pmjay_card_url, created_by_agent_id, last_interaction_date, 
+                booking_reference, patient_name, patient_phone, age, gender,
+                medical_condition, hospital_name, hospital_ids, appointment_date, appointment_time,
+                current_disposition, aadhar_card_url, pmjay_card_url, created_by_agent_id, last_interaction_date,
                 source, referee_id, created_at, updated_at, payment_mode
-            ) 
-            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20) 
+            )
+            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20)
             RETURNING id, booking_reference, patient_name`,
             [
                 booking_reference, patient_name, patient_phone_processed, age, gender,
                 medical_condition, hospital_name, hospitalIdsArray, appointment_date, appointment_time,
-                current_disposition, null, null, created_by_agent_id, last_interaction_date, 
-                "Doctor referral", referee_id, created_at, created_at, panel
+                current_disposition, null, null, created_by_agent_id, last_interaction_date,
+                source, referee_id, created_at, created_at, panel
             ]
         );
 
         const newOpdId = newOPD.rows[0].id;
 
         await logAudit(
-            loggedInUser.id, 'CREATE_OPD_BOOKING_WEB', 'opd_booking', newOpdId, 
+            loggedInUser.id, 'CREATE_OPD_BOOKING_WEB', 'opd_booking', newOpdId,
             { patientName: patient_name, hospital: hospital_name, hospitalIds: hospitalIdsArray }
         );
 
         res.status(201).json(new apiResponse(201, newOPD.rows[0], `OPD Booking ${booking_reference} created.`));
 
         const runBackgroundTasks = async () => {
-             let aadharDriveUrl = null;
+            let aadharDriveUrl = null;
             let pmjayDriveUrl = null;
-            
+
             try {
                 const notificationData = {
                     ...req.body,
@@ -153,27 +194,27 @@ export default class patientLeadController {
 
                 const aadharFile = req.files?.aadhar_document?.[0];
                 const pmjayFile = req.files?.pmjay_document?.[0];
-                
+
                 if (aadharFile) {
                     try {
                         const fileExt = path.extname(aadharFile.originalname) || '.jpg';
                         const aadharFileName = `${booking_reference}_aadhar${fileExt}`;
                         const links = await uploadAndGetLink(aadharFile.path, aadharFile.mimetype, aadharFileName);
                         aadharDriveUrl = links.directLink;
-                    } catch(uploadErr) {
+                    } catch (uploadErr) {
                         console.error(`Aadhar upload failed for ${newOpdId}:`, uploadErr.message);
                     } finally {
-                        await fs.unlink(aadharFile.path); 
+                        await fs.unlink(aadharFile.path);
                     }
                 }
-                
+
                 if (pmjayFile) {
                     try {
                         const fileExt = path.extname(pmjayFile.originalname) || '.jpg';
                         const pmjayFileName = `${booking_reference}_pmjay${fileExt}`;
                         const links = await uploadAndGetLink(pmjayFile.path, pmjayFile.mimetype, pmjayFileName);
                         pmjayDriveUrl = links.directLink;
-                    } catch(uploadErr) {
+                    } catch (uploadErr) {
                         console.error(`PMJAY upload failed for ${newOpdId}:`, uploadErr.message);
                     } finally {
                         await fs.unlink(pmjayFile.path);
@@ -190,14 +231,20 @@ export default class patientLeadController {
                     );
                 }
 
+                // Determine referral name and phone based on source
+                const referralName = source === "Doctor Referral" ? (referee_name || "N/A") :
+                    source === "Patient Referral" ? (patient_referral_name || "N/A") : "N/A";
+                const referralPhone = source === "Doctor Referral" ? (refree_phone_no || "N/A") :
+                    source === "Patient Referral" ? (patient_referral_phone || "N/A") : "N/A";
+
                 const sheetRow = [
-                    city, hospital_name, ndm_contact_processed, referee_name, 
-                    refree_phone_no, patient_name, patient_phone, _age, gender, 
-                    medical_condition, panel, 
-                    aadharDriveUrl || "N/A", 
-                    pmjayDriveUrl || "N/A", 
-                    null, created_at, booking_reference, 
-                    `${appointment_date} ${appointment_time}`, "Doctor referral", 
+                    city, hospital_name, ndm_contact_processed, referralName,
+                    referralPhone, patient_name, patient_phone, _age, gender,
+                    medical_condition, panel,
+                    aadharDriveUrl || "N/A",
+                    pmjayDriveUrl || "N/A",
+                    null, created_at, booking_reference,
+                    `${appointment_date} ${appointment_time}`, source,
                     current_disposition, last_interaction_date
                 ];
                 await addToSheetQueue("OPD_BOOKING", sheetRow);
@@ -208,13 +255,13 @@ export default class patientLeadController {
         };
         runBackgroundTasks();
     });
-    
+
     createPatientLeadBatchUpload = asyncHandler(async (req, res, next) => {
         const file = req.file;
         if (!file) throw new apiError(400, "No file uploaded.");
 
         const patientLeads = await readCsvFile(file.path);
-        fs.unlink(file.path, (err) => {});
+        fs.unlink(file.path, (err) => { });
 
         const failedRows = [];
         const allRefreePhones = [];
@@ -222,7 +269,7 @@ export default class patientLeadController {
         const validRowsToInsert = [];
 
         for (const row of patientLeads) {
-            if (row[4]) allRefreePhones.push(row[4]); 
+            if (row[4]) allRefreePhones.push(row[4]);
             if (row[2]) allNdmContacts.push(row[2]);
         }
 
@@ -255,7 +302,7 @@ export default class patientLeadController {
 
         for (const i in patientLeads) {
             const row = patientLeads[i];
-            const rowNumber = Number(i) + 2; 
+            const rowNumber = Number(i) + 2;
 
             try {
                 const hospital_name = processString(row[1]);
@@ -273,7 +320,7 @@ export default class patientLeadController {
 
                 const gender = row[8];
                 const medical_condition = row[9];
-                const panel = row[10]; 
+                const panel = row[10];
                 const booking_reference = row[13];
                 const tentative_visit_date = processTimeStamp(row[14]);
                 const current_disposition = row[16];
@@ -285,7 +332,7 @@ export default class patientLeadController {
                 if (!refree_id || !created_by_agent_id || !booking_reference || !hospital_name || !medical_condition || !patient_phone) {
                     throw new Error("Missing required fields.");
                 }
-                
+
                 const created_at = processTimeStamp(row[12]);
                 const appointment_date = tentative_visit_date ? tentative_visit_date.split("T")[0] : null;
 
@@ -309,9 +356,9 @@ export default class patientLeadController {
                     "hospital_name", "appointment_date", "current_disposition", "created_by_agent_id",
                     "last_interaction_date", "source", "referee_id", "created_at", "updated_at", "payment_mode"
                 ];
-                
+
                 await client.query('BEGIN');
-                const BATCH_SIZE = 1000; 
+                const BATCH_SIZE = 1000;
 
                 for (let i = 0; i < validRowsToInsert.length; i += BATCH_SIZE) {
                     const batchRows = validRowsToInsert.slice(i, i + BATCH_SIZE);
@@ -349,18 +396,18 @@ export default class patientLeadController {
         }, "Opd Bookings batch processing complete."));
 
     });
-    
+
     createDispositionLogBatchUpload = asyncHandler(async (req, res, next) => {
         const file = req.file;
         if (!file) throw new apiError(400, "No file uploaded.");
 
         const dispositionLogs = await readCsvFile(file.path);
-        fs.unlink(file.path, (err) => {});
+        fs.unlink(file.path, (err) => { });
 
         const logsToInsert = [];
         const failedRows = [];
         const uniqueCodes = [];
-        const opdMap = {}; 
+        const opdMap = {};
 
         for (const row of dispositionLogs) {
             if (row[0]) uniqueCodes.push(row[0]);
@@ -425,16 +472,16 @@ export default class patientLeadController {
             failures: failedRows
         }, "OPD Disposition Logs batch processed."));
     });
-    
+
     updatePatientLead = asyncHandler(async (req, res, next) => {
         let {
             id, booking_reference, patient_name, patient_phone, age: _age,
             gender, medical_condition, hospital_name, tentative_visit_date,
-            current_disposition, panel 
+            current_disposition, panel
         } = req.body;
 
         if (!id && !booking_reference) throw new apiError(400, "Provide id or booking reference.");
-        
+
         const identifier_key = id ? 'id' : 'booking_reference';
         const identifier_value = id ? id : booking_reference;
 
@@ -446,7 +493,7 @@ export default class patientLeadController {
                     [identifier_value]
                 );
                 if (oldData.rows.length > 0) old_patient_phone = oldData.rows[0].patient_phone;
-            } catch (e) {}
+            } catch (e) { }
         }
 
         const updated_at = getIndianTimeISO();
@@ -505,25 +552,25 @@ export default class patientLeadController {
             queryParams.push(booking_reference);
         }
 
-        const updateQuery = `UPDATE opd_bookings SET ${updateFields.join(', ')} WHERE ${whereClause} RETURNING *`; 
+        const updateQuery = `UPDATE opd_bookings SET ${updateFields.join(', ')} WHERE ${whereClause} RETURNING *`;
         const updatedResult = await pool.query(updateQuery, queryParams);
 
         if (updatedResult.rowCount === 0) throw new apiError(404, "OPD booking not found.");
-        
+
         const updatedRow = updatedResult.rows[0];
 
         if (req.user) {
             await logAudit(req.user.id, 'PATIENT_UPDATE', 'opd_booking', updatedRow.id, { changedFields: updateFields });
         }
-        
-   
+
+
         res.status(200).json(new apiResponse(200, updatedRow, "Updated successfully"));
-        
+
         const runBackgroundTasks = async () => {
             try {
                 const new_phone_updated = updatedRow.patient_phone;
                 if (patient_phone && old_patient_phone && new_phone_updated !== old_patient_phone) {
-                   
+
                     const detailsQuery = `
                         SELECT 
                             u.phone AS ndm_phone, 
@@ -541,19 +588,19 @@ export default class patientLeadController {
 
                     // --- 2. Sheet Update ---
                     await addToSheetQueue("UPDATE_PATIENT_PHONE", { booking_reference: updatedRow.booking_reference, new_phone: new_phone_updated });
-                    
+
                     // --- 3. QR Code Generation ---
                     const qrPatientData = {
                         name: updatedRow.patient_name,
                         age: updatedRow.age || "N/A",
                         gender: updatedRow.gender || "N/A",
-                        credits: "0", 
-                        phoneNumber: updatedRow.patient_phone, 
+                        credits: "0",
+                        phoneNumber: updatedRow.patient_phone,
                         uniqueCode: updatedRow.booking_reference,
                         timestamp: new Date().toISOString()
                     };
                     const qrCodeUrl = await fetchQrCodeUrl(qrPatientData);
-                    
+
                     // --- 4. Send notification to Patient (AiSensy) ---
                     if (qrCodeUrl) await sendAiSensy(updatedRow.patient_phone, updatedRow.patient_name, qrCodeUrl);
 
@@ -578,16 +625,16 @@ export default class patientLeadController {
         };
         runBackgroundTasks();
     });
-    
+
     deletePatientLead = asyncHandler(async (req, res, next) => {
         const { id, booking_reference } = req.body;
         if (!id && !booking_reference) throw new apiError(400, "Provide id or booking reference.");
-        
+
         let opdId;
         if (!id) {
-             const opdResult = await pool.query("SELECT id FROM opd_bookings WHERE booking_reference = $1", [booking_reference]);
-             if (opdResult.rows.length === 0) throw new apiError(404, "Not found.");
-             opdId = opdResult.rows[0].id;
+            const opdResult = await pool.query("SELECT id FROM opd_bookings WHERE booking_reference = $1", [booking_reference]);
+            if (opdResult.rows.length === 0) throw new apiError(404, "Not found.");
+            opdId = opdResult.rows[0].id;
         } else {
             opdId = id;
         }
@@ -607,7 +654,7 @@ export default class patientLeadController {
             await fs.unlink(file.path);
             res.status(200).json(new apiResponse(200, { url: links.directLink }, "Uploaded successfully"));
         } catch (uploadError) {
-            try { await fs.unlink(file.path); } catch (e) {}
+            try { await fs.unlink(file.path); } catch (e) { }
             throw new apiError(500, "Upload failed.");
         }
     });
@@ -654,7 +701,7 @@ export default class patientLeadController {
             `;
             const currentRes = await client.query(fetchQuery, [booking_reference]);
             if (currentRes.rows.length === 0) throw new apiError(404, "Booking not found.");
-            
+
             const row = currentRes.rows[0];
             const opdId = row.id;
             const prevDisposition = row.current_disposition;
@@ -678,7 +725,7 @@ export default class patientLeadController {
                      last_interaction_date = $5,
                      updated_at = $5
                  WHERE id = $3`,
-                [new_disposition, hospital_name, opdId, hospital_id, logTime] 
+                [new_disposition, hospital_name, opdId, hospital_id, logTime]
             );
             await client.query('COMMIT');
 
@@ -688,7 +735,7 @@ export default class patientLeadController {
                 name: row.patient_name,
                 disposition: new_disposition,
                 panel: row.payment_mode,
-                ndmContact: row.ndm_phone,  
+                ndmContact: row.ndm_phone,
                 refereeName: row.ref_first ? `${row.ref_first} ${row.ref_last || ''}`.trim() : null,
                 refereeContactNumber: row.ref_phone
             };
