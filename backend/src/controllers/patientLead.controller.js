@@ -94,7 +94,15 @@ export default class patientLeadController {
             throw new apiError(400, "Missing required fields.");
         }
 
-        const hospitalIdsArray = Array.isArray(hospital_ids) ? hospital_ids : (hospital_ids ? [hospital_ids] : []);
+       let hospitalIdsArray = [];
+        if (Array.isArray(hospital_ids)) {
+            hospitalIdsArray = hospital_ids;
+        } else if (typeof hospital_ids === 'string') {
+            // Split by comma and trim whitespace to handle "uuid1,uuid2"
+            hospitalIdsArray = hospital_ids.split(',').map(id => id.trim()).filter(id => id);
+        } else if (hospital_ids) {
+            hospitalIdsArray = [hospital_ids];
+        }
         const ndm_contact_processed = process_phone_no(loggedInUser.phone);
         const patient_phone_processed = process_phone_no(patient_phone);
         const refree_phone_processed = refree_phone_no ? process_phone_no(refree_phone_no) : null;
