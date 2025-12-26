@@ -16,6 +16,7 @@ import {
     sendDispositionUpdateNotifications,
     sendPhoneUpdateNotifications
 } from "../utils/notification.util.js";
+import { generateUniqueBookingReference } from "../utils/generateBookingReference.util.js";
 
 export default class patientLeadController {
 
@@ -23,13 +24,13 @@ export default class patientLeadController {
         let {
             hospital_name, ndm_contact, refree_phone_no, patient_name, patient_phone,
             age: _age, gender, medical_condition, panel,
-            booking_reference, tentative_visit_date: tentative_visit_dateRaw,
+            tentative_visit_date: tentative_visit_dateRaw,
             current_disposition, patient_diposition_last_update: patient_diposition_last_updateRaw
         } = req.body;
 
         hospital_name = processString(hospital_name);
 
-        if (!refree_phone_no || !ndm_contact || !patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference) {
+        if (!refree_phone_no || !ndm_contact || !patient_name || !patient_phone || !medical_condition || !hospital_name) {
             throw new apiError(400, "Missing required fields.");
         }
 
@@ -60,6 +61,9 @@ export default class patientLeadController {
         if (ndm.rows.length === 0) throw new apiError(404, `NDM/Agent not found: ${ndm_contact}`);
         const created_by_agent_id = ndm.rows[0].id;
 
+        // Generate unique booking reference on backend
+        const booking_reference = await generateUniqueBookingReference(pool);
+
         const newOPD = await pool.query(
             "INSERT INTO opd_bookings (booking_reference,patient_name,patient_phone,age,gender,medical_condition,hospital_name,appointment_date,current_disposition,created_by_agent_id,last_interaction_date,source,referee_id,created_at,updated_at, payment_mode) values ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16) RETURNING id, booking_reference, patient_name ",
             [
@@ -83,18 +87,18 @@ export default class patientLeadController {
             refree_phone_no, referee_name, patient_name, patient_phone,
             patient_referral_name, patient_referral_phone,
             city, age: _age, gender, medical_condition, panel,
-            booking_reference, appointment_date, appointment_time,
+            appointment_date, appointment_time,
             current_disposition, source
         } = req.body;
 
         hospital_name = processString(hospital_name);
 
         // Make doctor fields optional - only required if not provided
-        if (!patient_name || !patient_phone || !medical_condition || !hospital_name || !booking_reference || !appointment_date || !appointment_time || !source) {
+        if (!patient_name || !patient_phone || !medical_condition || !hospital_name || !appointment_date || !appointment_time || !source) {
             throw new apiError(400, "Missing required fields.");
         }
 
-       let hospitalIdsArray = [];
+        let hospitalIdsArray = [];
         if (Array.isArray(hospital_ids)) {
             hospitalIdsArray = hospital_ids;
         } else if (typeof hospital_ids === 'string') {
@@ -159,6 +163,9 @@ export default class patientLeadController {
         }
 
         const created_by_agent_id = loggedInUser.id;
+
+        // Generate unique booking reference on backend
+        const booking_reference = await generateUniqueBookingReference(pool);
 
         const newOPD = await pool.query(
             `INSERT INTO opd_bookings (

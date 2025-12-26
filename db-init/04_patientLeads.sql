@@ -30,7 +30,7 @@ CREATE TABLE patient_leads (
 CREATE TABLE opd_bookings (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     patient_lead_id UUID REFERENCES patient_leads(id),
-    booking_reference VARCHAR(50) NOT NULL,
+    booking_reference VARCHAR(50) NOT NULL UNIQUE,
     patient_name VARCHAR(100) NOT NULL,
     patient_phone VARCHAR(20) NOT NULL,
     age INTEGER,

@@ -6,9 +6,6 @@ import axios from "axios";
 import Header from "../components/Header";
 
 // --- Helper Functions ---
-const generateLeadId = () => {
-  return Math.random().toString(36).substring(2, 9);
-};
 const getTodayDate = () => new Date().toISOString().split("T")[0];
 const getCurrentTime = () =>
   new Date().toTimeString().split(" ")[0].substring(0, 5);
@@ -21,7 +18,6 @@ interface Hospital {
 
 
 interface OpdFormData {
-  booking_reference: string;
   patient_name: string;
   patient_phone: string;
   referee_name: string;
@@ -55,7 +51,6 @@ export default function BookOpdPage() {
 
 
   const [formData, setFormData] = useState<OpdFormData>({
-    booking_reference: generateLeadId(),
     patient_name: "",
     patient_phone: "",
     referee_name: "",
@@ -281,7 +276,6 @@ export default function BookOpdPage() {
   // --- Helper to Reset Form ---
   const resetForm = () => {
     setFormData({
-      booking_reference: generateLeadId(),
       patient_name: "",
       patient_phone: "",
       referee_name: "",
