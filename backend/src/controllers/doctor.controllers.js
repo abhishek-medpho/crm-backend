@@ -1,7 +1,7 @@
 import apiError from "../utils/apiError.utils.js";
 import apiResponse from "../utils/apiResponse.utils.js";
 import asyncHandler from "../utils/asynchandler.utils.js";
-import {process_phone_no, processTimeStamp, processString, convertDurationToMinutes, parseCallLogTimestamp, getIndianTimeISO} from "../helper/preprocess_data.helper.js";
+import { process_phone_no, processTimeStamp, processString, convertDurationToMinutes, parseCallLogTimestamp, getIndianTimeISO } from "../helper/preprocess_data.helper.js";
 import { processDoctorName } from "../helper/process_doctor_name.helper.js";
 import { pool } from "../DB/db.js";
 import readCsvFile from "../helper/read_csv.helper.js";
@@ -64,17 +64,17 @@ export default class doctorController {
             }
 
             await pool.query(
-                `UPDATE doctors SET onboarding_date = $1, last_meeting = $2, location = $3, gps_location_link = $4, updated_at = $6, assigned_agent_id_offline = $7 WHERE phone = $5`,
+                `UPDATE doctors SET onboarding_date = $1, last_meeting = $2, location = $3, gps_location_link = $4, updated_at = $6, assigned_agent_id_primary = $7 WHERE phone = $5`,
                 [newOnboarding, newLastMeeting, locationJson, gps_location_of_the_clinic, phone, currentTimeIST, NDM]
             );
         } else {
             await pool.query(
-                `INSERT INTO doctors (first_name, phone, location, gps_location_link, onboarding_date, last_meeting, assigned_agent_id_offline, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+                `INSERT INTO doctors (first_name, phone, location, gps_location_link, onboarding_date, last_meeting, assigned_agent_id_primary, created_at, updated_at) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [fullName, phone, locationJson, gps_location_of_the_clinic, timestamp, timestamp, NDM, currentTimeIST, currentTimeIST]
             );
         }
 
-        const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]); 
+        const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]);
 
         const photosJSON = JSON.stringify({
             clinicImage: clinic_image_link,
@@ -119,7 +119,7 @@ export default class doctorController {
 
         const locationJson = JSON.stringify({ locality: locality, latitude: latitude, longitude: longitude });
 
-        const existingDoctor = await pool.query("SELECT id, onboarding_date, last_meeting, assigned_agent_id_offline FROM doctors WHERE phone = $1", [phone]);
+        const existingDoctor = await pool.query("SELECT id, onboarding_date, last_meeting, assigned_agent_id_primary FROM doctors WHERE phone = $1", [phone]);
         let NDM = loggedInUser.id;
 
         // Use IST for updates
@@ -153,7 +153,7 @@ export default class doctorController {
                     last_meeting = $3, 
                     location = $4, 
                     updated_at = $6, 
-                    assigned_agent_id_offline = $7, 
+                    assigned_agent_id_primary = $7, 
                     gps_location_link = $8
                  WHERE phone = $5`,
                 [updateName, newOnboarding, newLastMeeting, locationJson, phone, currentTimeIST, NDM, gps_location_of_the_clinic]
@@ -162,7 +162,7 @@ export default class doctorController {
             await pool.query(
                 `INSERT INTO doctors (
                     first_name, phone, location, onboarding_date, 
-                    last_meeting, assigned_agent_id_offline, gps_location_link, created_at, updated_at
+                    last_meeting, assigned_agent_id_primary, gps_location_link, created_at, updated_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
                 [fullName, phone, locationJson, timestamp, timestamp, NDM, gps_location_of_the_clinic, currentTimeIST, currentTimeIST]
             );
@@ -266,7 +266,7 @@ export default class doctorController {
 
     // --- 3. UPDATE DOCTOR ---
     updateDoctor = asyncHandler(async (req, res, next) => {
-        let { id, phone, first_name, last_name, location_locality, gps_location_link, status, assigned_agent_id_offline, assigned_agent_id_online } = req.body;
+        let { id, phone, first_name, last_name, location_locality, gps_location_link, status, assigned_agent_id_primary, assigned_agent_id_online } = req.body;
 
         if (!id && !phone) throw new apiError(400, "Provide id or phone.");
 
@@ -364,7 +364,7 @@ export default class doctorController {
         if (!file) throw new apiError(400, "No file uploaded.");
 
         const doctorsCsvData = await readCsvFile(file.path);
-        fs.unlink(file.path, (err) => {});
+        fs.unlink(file.path, (err) => { });
 
         const allNDMNames = new Set();
         const allDoctorPhones = new Set();
@@ -403,7 +403,7 @@ export default class doctorController {
         });
 
         const doctorPlaceholder = Array.from(allDoctorPhones).map((_, i) => `$${i + 1}`).join(',');
-        const doctorResult = await pool.query(`SELECT id, phone, onboarding_date, last_meeting, assigned_agent_id_offline FROM doctors WHERE phone IN (${doctorPlaceholder})`, Array.from(allDoctorPhones));
+        const doctorResult = await pool.query(`SELECT id, phone, onboarding_date, last_meeting, assigned_agent_id_primary FROM doctors WHERE phone IN (${doctorPlaceholder})`, Array.from(allDoctorPhones));
         const doctorMap = {};
         doctorResult.rows.forEach(r => doctorMap[r.phone] = r);
 
@@ -442,7 +442,7 @@ export default class doctorController {
                         if (existingDoc.last_meeting <= timestamp) NDM = NDM_id;
 
                         updateDoctorUpdates.push({
-                            query: `UPDATE doctors SET onboarding_date = $1, last_meeting = $2, location = $3, gps_location_link = $4, updated_at = $6, assigned_agent_id_offline = $7 WHERE phone = $5`,
+                            query: `UPDATE doctors SET onboarding_date = $1, last_meeting = $2, location = $3, gps_location_link = $4, updated_at = $6, assigned_agent_id_primary = $7 WHERE phone = $5`,
                             params: [newOnboarding, newLastMeeting, locationJson, gps_location_link, phone, currentTimeIST, NDM],
                         });
                         createdDoctorIds[phone] = existingDoc.id;
@@ -527,7 +527,7 @@ export default class doctorController {
         const ndmId = ndmResult.rows[0].id;
 
         const doctorsCsvData = await readCsvFile(file.path);
-        fs.unlink(file.path, (err) => {});
+        fs.unlink(file.path, (err) => { });
 
         const allDoctorPhones = new Set();
         const rowsToProcess = [];
@@ -588,12 +588,12 @@ export default class doctorController {
         }
 
         const updatePromises = updateDoctorUpdates.map(u =>
-            pool.query("UPDATE doctors SET assigned_agent_id_online = $1, updated_at = $3 WHERE id = $2", [u.ndmId, u.id, currentIST])
+            pool.query("UPDATE doctors SET assigned_agent_id_secondary = $1, updated_at = $3 WHERE id = $2", [u.ndmId, u.id, currentIST])
         );
         await Promise.all(updatePromises);
 
         const doctorChunkSize = 10000;
-        const doctorColumns = ['first_name', 'phone', 'location', 'assigned_agent_id_online'];
+        const doctorColumns = ['first_name', 'phone', 'location', 'assigned_agent_id_secondary'];
 
         for (let i = 0; i < newDoctorInserts.length; i += doctorColumns.length * doctorChunkSize) {
             const chunk = newDoctorInserts.slice(i, i + doctorColumns.length * doctorChunkSize);
@@ -626,7 +626,7 @@ export default class doctorController {
         const file = req.file;
         if (!file) throw new apiError(400, "No file uploaded.");
         const doctorsCallLogs = await readCsvFile(file.path);
-        fs.unlink(file.path, (err) => {});
+        fs.unlink(file.path, (err) => { });
 
         const failedRows = [];
         const rowsToProcess = [];
@@ -725,7 +725,7 @@ export default class doctorController {
             await fs.unlink(file.path);
             res.status(200).json(new apiResponse(200, { url: links.directLink }, "Document uploaded"));
         } catch (uploadError) {
-            try { await fs.unlink(file.path); } catch (e) {}
+            try { await fs.unlink(file.path); } catch (e) { }
             throw new apiError(500, "Upload failed.");
         }
     });
