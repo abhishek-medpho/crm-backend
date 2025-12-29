@@ -60,7 +60,7 @@ export default class doctorController {
             let newOnboarding = new Date(doc.onboarding_date) < new Date(timestamp) ? doc.onboarding_date : timestamp;
             let newLastMeeting = new Date(doc.last_meeting) > new Date(timestamp) ? doc.last_meeting : timestamp;
             if (new Date(doc.last_meeting) <= new Date(timestamp)) {
-                NDM = doc.assigned_agent_id_offline;
+                NDM = doc.assigned_agent_id_primary;
             }
 
             await pool.query(
@@ -137,7 +137,7 @@ export default class doctorController {
 
             // Only change assigned agent if this is not the first meeting
             if (doc.last_meeting && new Date(doc.last_meeting) > new Date(timestamp)) {
-                NDM = doc.assigned_agent_id_offline;
+                NDM = doc.assigned_agent_id_primary;
             }
 
             // Update doctor's full name if new name is more complete
@@ -290,8 +290,8 @@ export default class doctorController {
         addField(last_name, "last_name");
         addField(gps_location_link, "gps_location_link");
         addField(status, "status");
-        addField(assigned_agent_id_offline, "assigned_agent_id_offline");
-        addField(assigned_agent_id_online, "assigned_agent_id_online");
+        addField(assigned_agent_id_primary, "assigned_agent_id_primary");
+        addField(assigned_agent_id_secondary, "assigned_agent_id_secondary");
 
         if (phone !== undefined && phone !== null) {
             updateFields.push(`phone = $${paramIndex++}`);
@@ -436,7 +436,7 @@ export default class doctorController {
                 if (!createdDoctorIds[phone]) {
                     const existingDoc = doctorMap[phone];
                     if (existingDoc) {
-                        let NDM = existingDoc.assigned_agent_id_offline;
+                        let NDM = existingDoc.assigned_agent_id_primary;
                         let newOnboarding = existingDoc.onboarding_date < timestamp ? existingDoc.onboarding_date : timestamp;
                         let newLastMeeting = existingDoc.last_meeting > timestamp ? existingDoc.last_meeting : timestamp;
                         if (existingDoc.last_meeting <= timestamp) NDM = NDM_id;
@@ -466,7 +466,7 @@ export default class doctorController {
 
         let insertedDoctorIds = {};
         const doctorChunkSize = 5000;
-        const doctorColumns = ['first_name', 'phone', 'location', 'gps_location_link', 'onboarding_date', 'last_meeting', 'assigned_agent_id_offline'];
+        const doctorColumns = ['first_name', 'phone', 'location', 'gps_location_link', 'onboarding_date', 'last_meeting', 'assigned_agent_id_primary'];
 
         for (let i = 0; i < newDoctorInserts.length; i += doctorColumns.length * doctorChunkSize) {
             const chunk = newDoctorInserts.slice(i, i + doctorColumns.length * doctorChunkSize);
