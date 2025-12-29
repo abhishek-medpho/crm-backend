@@ -1,6 +1,7 @@
 import apiResponse from "../utils/apiResponse.utils.js";
 import asyncHandler from "../utils/asynchandler.utils.js";
 import { process_phone_no, processString, processTimeStamp, getIndianTimeISO } from "../helper/preprocess_data.helper.js";
+import { processDoctorName } from "../helper/process_doctor_name.helper.js";
 import { pool } from "../DB/db.js";
 import readCsvFile from "../helper/read_csv.helper.js";
 import apiError from "../utils/apiError.utils.js";
@@ -121,19 +122,30 @@ export default class patientLeadController {
         const created_at = getIndianTimeISO();
         const last_interaction_date = created_at;
 
-        // Helper function to get or create external referee
+        // Helper function to get or create referee (doctors or patients)
         const getOrCreateReferee = async (phone, name, type) => {
             if (!phone || !name) return null;
 
-            // If type is doctor, check doctors table first
             if (type === 'doctor') {
+                // Check if doctor already exists
                 const doctorCheck = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]);
                 if (doctorCheck.rows.length > 0) {
                     return doctorCheck.rows[0].id;
                 }
+
+                // Create minimal doctor record in doctors table
+                const { firstName, lastName } = processDoctorName(name);
+                const newDoctor = await pool.query(
+                    `INSERT INTO doctors (first_name, last_name, phone, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5)
+                     RETURNING id`,
+                    [firstName, lastName || '', phone, created_at, created_at]
+                );
+
+                return newDoctor.rows[0].id;
             }
 
-            // Check if already exists in external_referees
+            // For patient referrals, continue using external_referees
             const externalCheck = await pool.query(
                 "SELECT id FROM external_referees WHERE phone = $1",
                 [phone]
@@ -143,7 +155,7 @@ export default class patientLeadController {
                 return externalCheck.rows[0].id;
             }
 
-            // Create new external referee
+            // Create new external referee for patients
             const newReferee = await pool.query(
                 `INSERT INTO external_referees (name, phone, referee_type, created_at, updated_at)
                  VALUES ($1, $2, $3, $4, $5)

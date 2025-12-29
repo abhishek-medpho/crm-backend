@@ -1,20 +1,13 @@
 import apiError from "../utils/apiError.utils.js";
 import apiResponse from "../utils/apiResponse.utils.js";
 import asyncHandler from "../utils/asynchandler.utils.js";
-import { 
-    process_phone_no, 
-    processTimeStamp, 
-    processString, 
-    convertDurationToMinutes, 
-    parseCallLogTimestamp, 
-    getIndianTimeISO 
-} from "../helper/preprocess_data.helper.js";
+import {process_phone_no, processTimeStamp, processString, convertDurationToMinutes, parseCallLogTimestamp, getIndianTimeISO} from "../helper/preprocess_data.helper.js";
 import { processDoctorName } from "../helper/process_doctor_name.helper.js";
 import { pool } from "../DB/db.js";
 import readCsvFile from "../helper/read_csv.helper.js";
 import fs from "fs/promises";
-import { addToSheetQueue } from "../utils/sheetQueue.util.js"; 
-import { uploadAndGetLink } from "../utils/driveUploader.utils.js"; 
+import { addToSheetQueue } from "../utils/sheetQueue.util.js";
+import { uploadAndGetLink } from "../utils/driveUploader.utils.js";
 import { sendDoctorMeetingNotification } from "../utils/notification.util.js";
 import path from "path";
 import { logAudit } from "../utils/auditLogger.util.js";
@@ -81,8 +74,8 @@ export default class doctorController {
             );
         }
 
-        const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]);
-        
+        const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]); 
+
         const photosJSON = JSON.stringify({
             clinicImage: clinic_image_link,
             selfieImage: selfie_image_link,
@@ -105,19 +98,19 @@ export default class doctorController {
     createMeetingFromWeb = asyncHandler(async (req, res, next) => {
         const loggedInUser = req.user;
         if (!loggedInUser || !loggedInUser.id) throw new apiError(401, "User not authenticated");
-        
+
         const {
             doctor_name, doctor_phone_number, locality, duration_of_meeting,
             queries_by_the_doctor, comments_by_ndm, chances_of_getting_leads,
-            timestamp_of_the_meeting, 
+            timestamp_of_the_meeting,
             gps_location_of_the_clinic, latitude, longitude, facilities, opd_count,
             numPatientsDuringMeeting, rating
         } = req.body;
 
         const ndm_name = loggedInUser.first_name;
         if (!ndm_name || !doctor_phone_number) throw new apiError(400, "Compulsory fields missing");
-        
-        const timestamp = processTimeStamp(timestamp_of_the_meeting); 
+
+        const timestamp = processTimeStamp(timestamp_of_the_meeting);
         const phone = process_phone_no(doctor_phone_number);
         if (!phone || !timestamp) throw new apiError(400, "Invalid phone or timestamp format");
 
@@ -125,26 +118,45 @@ export default class doctorController {
         const fullName = `${firstName} ${lastName}`.trim();
 
         const locationJson = JSON.stringify({ locality: locality, latitude: latitude, longitude: longitude });
-        
+
         const existingDoctor = await pool.query("SELECT id, onboarding_date, last_meeting, assigned_agent_id_offline FROM doctors WHERE phone = $1", [phone]);
-        let NDM = loggedInUser.id; 
+        let NDM = loggedInUser.id;
 
         // Use IST for updates
         const currentTimeIST = getIndianTimeISO();
 
         if (existingDoctor?.rows?.length > 0) {
             const doc = existingDoctor.rows[0];
-            let newOnboarding = doc.onboarding_date < timestamp ? doc.onboarding_date : timestamp;
-            let newLastMeeting = doc.last_meeting > timestamp ? doc.last_meeting : timestamp;
-            if (doc.last_meeting > timestamp) {
+            // Handle nullable onboarding_date and last_meeting
+            let newOnboarding = doc.onboarding_date
+                ? (new Date(doc.onboarding_date) < new Date(timestamp) ? doc.onboarding_date : timestamp)
+                : timestamp;
+            let newLastMeeting = doc.last_meeting
+                ? (new Date(doc.last_meeting) > new Date(timestamp) ? doc.last_meeting : timestamp)
+                : timestamp;
+
+            // Only change assigned agent if this is not the first meeting
+            if (doc.last_meeting && new Date(doc.last_meeting) > new Date(timestamp)) {
                 NDM = doc.assigned_agent_id_offline;
             }
+
+            // Update doctor's full name if new name is more complete
+            let updateName = fullName;
+            if (!fullName || (doc.first_name && doc.first_name.length > fullName.length)) {
+                updateName = doc.first_name;
+            }
+
             await pool.query(
                 `UPDATE doctors SET 
-                    onboarding_date = $1, last_meeting = $2, location = $3, 
-                    updated_at = $5, assigned_agent_id_offline = $6, gps_location_link = $7 
-                 WHERE phone = $4`,
-                [ newOnboarding, newLastMeeting, locationJson, phone, currentTimeIST, NDM, gps_location_of_the_clinic ]
+                    first_name = $1,
+                    onboarding_date = $2, 
+                    last_meeting = $3, 
+                    location = $4, 
+                    updated_at = $6, 
+                    assigned_agent_id_offline = $7, 
+                    gps_location_link = $8
+                 WHERE phone = $5`,
+                [updateName, newOnboarding, newLastMeeting, locationJson, phone, currentTimeIST, NDM, gps_location_of_the_clinic]
             );
         } else {
             await pool.query(
@@ -152,13 +164,13 @@ export default class doctorController {
                     first_name, phone, location, onboarding_date, 
                     last_meeting, assigned_agent_id_offline, gps_location_link, created_at, updated_at
                 ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
-                [ fullName, phone, locationJson, timestamp, timestamp, NDM, gps_location_of_the_clinic, currentTimeIST, currentTimeIST ]
+                [fullName, phone, locationJson, timestamp, timestamp, NDM, gps_location_of_the_clinic, currentTimeIST, currentTimeIST]
             );
         }
 
         const doctor = await pool.query("SELECT id FROM doctors WHERE phone = $1", [phone]);
         if (doctor.rows.length === 0) throw new apiError(500, "Error creating doctor.");
-        
+
         // Insert meeting: created_at = meeting time, updated_at = entry time (IST)
         const meeting = await pool.query(
             `INSERT INTO doctor_meetings (
@@ -166,12 +178,12 @@ export default class doctorController {
                 meeting_notes, gps_verified, meeting_summary, created_at, updated_at,
                 photos, gps_location_link 
             ) VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12) 
-            RETURNING id, agent_id, doctor_id`, 
+            RETURNING id, agent_id, doctor_id`,
             [
                 doctor.rows[0].id, NDM, "physical", duration_of_meeting,
-                locationJson, 
-                `Queries: ${queries_by_the_doctor} \n\nComments: ${comments_by_ndm}`, 
-                true, chances_of_getting_leads, 
+                locationJson,
+                `Queries: ${queries_by_the_doctor} \n\nComments: ${comments_by_ndm}`,
+                true, chances_of_getting_leads,
                 timestamp, currentTimeIST,
                 null, gps_location_of_the_clinic
             ]
@@ -180,7 +192,7 @@ export default class doctorController {
         const newMeetingId = meeting.rows[0].id;
 
         await logAudit(loggedInUser.id, 'MEETING_LOGGED', 'doctor_meeting', newMeetingId, { doctorName: fullName });
-        
+
         res.status(201).json(new apiResponse(201, { ...meeting.rows[0], doctor_name: fullName }, "Doctor and meeting successfully created"));
 
         const runBackgroundTasks = async () => {
@@ -229,10 +241,10 @@ export default class doctorController {
                 }
 
                 const [date_of_meeting, time_of_meeting] = timestamp_of_the_meeting.split(' ');
-                
+
                 const sheetRow = [
                     ndm_name, doctor_name, doctor_phone_number, locality,
-                    facilities, opd_count, duration_of_meeting, 
+                    facilities, opd_count, duration_of_meeting,
                     numPatientsDuringMeeting, queries_by_the_doctor, rating,
                     comments_by_ndm, chances_of_getting_leads,
                     clinicDriveUrl || "N/A",
@@ -248,7 +260,7 @@ export default class doctorController {
                 console.error("--- BACKGROUND TASK FAILED (Doctor Meeting) ---", backgroundError.message);
             }
         };
-        
+
         runBackgroundTasks();
     });
 
@@ -260,7 +272,7 @@ export default class doctorController {
 
         // Use IST
         const updated_at = getIndianTimeISO();
-        
+
         const updateFields = [];
         const queryParams = [];
         let paramIndex = 1;
@@ -342,7 +354,7 @@ export default class doctorController {
         const deleteResult = await pool.query("DELETE FROM doctors WHERE id = $1 RETURNING id, phone, first_name", [doctorId]);
 
         if (deleteResult.rowCount === 0) throw new apiError(404, "Doctor not found or failed to delete.");
-        
+
         res.status(200).json(new apiResponse(200, deleteResult.rows[0], "Doctor and related meetings successfully deleted"));
     });
 
@@ -367,7 +379,7 @@ export default class doctorController {
                 const FullName = row[1];
                 const phoneRaw = row[2];
                 const ndm_name = row[0];
-                const timestamp = processTimeStamp(row[17] + " " + row[16]); 
+                const timestamp = processTimeStamp(row[17] + " " + row[16]);
                 const phone = process_phone_no(phoneRaw);
 
                 if (!FullName || !phone || !timestamp || !ndm_name) throw new Error("Missing fields");
@@ -378,9 +390,9 @@ export default class doctorController {
                 failedRows.push({ rowNumber, reason: error.message });
             }
         }
-        
+
         if (rowsToProcess.length === 0) return res.status(201).json(new apiResponse(201, { newly_created_count: 0, failures: failedRows }, "No valid data."));
-        
+
         const ndmMap = {};
         const ndmPlaceholder = Array.from(allNDMNames).map((_, i) => `$${i + 1}`).join(',');
         const ndmResult = await pool.query(`SELECT id, first_name, last_name FROM users WHERE first_name IN (${ndmPlaceholder}) OR CONCAT(first_name,' ',last_name) IN (${ndmPlaceholder})`, Array.from(allNDMNames));
@@ -395,11 +407,11 @@ export default class doctorController {
         const doctorMap = {};
         doctorResult.rows.forEach(r => doctorMap[r.phone] = r);
 
-        const newDoctorInserts = []; 
-        const updateDoctorUpdates = []; 
-        const meetingsToInsert = [];    
-        const createdDoctorIds = {}; 
-        
+        const newDoctorInserts = [];
+        const updateDoctorUpdates = [];
+        const meetingsToInsert = [];
+        const createdDoctorIds = {};
+
         let processedDoctorsCount = 0;
         let updatedDoctorsCount = 0;
 
@@ -420,7 +432,7 @@ export default class doctorController {
                 const duration = row[6];
                 const meeting_notes = row[8];
                 const meeting_summary = row[11];
-                
+
                 if (!createdDoctorIds[phone]) {
                     const existingDoc = doctorMap[phone];
                     if (existingDoc) {
@@ -433,12 +445,12 @@ export default class doctorController {
                             query: `UPDATE doctors SET onboarding_date = $1, last_meeting = $2, location = $3, gps_location_link = $4, updated_at = $6, assigned_agent_id_offline = $7 WHERE phone = $5`,
                             params: [newOnboarding, newLastMeeting, locationJson, gps_location_link, phone, currentTimeIST, NDM],
                         });
-                        createdDoctorIds[phone] = existingDoc.id; 
+                        createdDoctorIds[phone] = existingDoc.id;
                         updatedDoctorsCount++;
                     } else {
                         // Insert using meeting timestamp for last_meeting, but IST for created/updated
                         newDoctorInserts.push(fullName, phone, locationJson, gps_location_link, timestamp, timestamp, NDM_id);
-                        createdDoctorIds[phone] = 'NEW_ID_' + phone; 
+                        createdDoctorIds[phone] = 'NEW_ID_' + phone;
                         processedDoctorsCount++;
                     }
                 }
@@ -449,13 +461,13 @@ export default class doctorController {
                 failedRows.push({ rowNumber, reason: error.message });
             }
         }
-        
+
         await Promise.all(updateDoctorUpdates.map(u => pool.query(u.query, u.params)));
-        
-        let insertedDoctorIds = {}; 
-        const doctorChunkSize = 5000; 
+
+        let insertedDoctorIds = {};
+        const doctorChunkSize = 5000;
         const doctorColumns = ['first_name', 'phone', 'location', 'gps_location_link', 'onboarding_date', 'last_meeting', 'assigned_agent_id_offline'];
-        
+
         for (let i = 0; i < newDoctorInserts.length; i += doctorColumns.length * doctorChunkSize) {
             const chunk = newDoctorInserts.slice(i, i + doctorColumns.length * doctorChunkSize);
             if (chunk.length === 0) continue;
@@ -505,22 +517,22 @@ export default class doctorController {
     createOnlineDoctors = asyncHandler(async (req, res, next) => {
         const file = req.file;
         const ndmPhoneRaw = req.params.ndmPhone;
-    
+
         if (!file) throw new apiError(400, "No file uploaded.");
         if (!ndmPhoneRaw) throw new apiError(400, "NDM phone number is required.");
-    
+
         const ndmPhone = process_phone_no(ndmPhoneRaw);
         const ndmResult = await pool.query("SELECT id FROM users WHERE phone = $1", [ndmPhone]);
         if (ndmResult.rows.length === 0) throw new apiError(404, `NDM with phone ${ndmPhone} not found.`);
         const ndmId = ndmResult.rows[0].id;
-        
+
         const doctorsCsvData = await readCsvFile(file.path);
         fs.unlink(file.path, (err) => {});
-        
+
         const allDoctorPhones = new Set();
         const rowsToProcess = [];
         const failedRows = [];
-    
+
         for (let i = 0; i < doctorsCsvData.length; i++) {
             const row = doctorsCsvData[i];
             const rowNumber = i + 2;
@@ -535,21 +547,21 @@ export default class doctorController {
                 failedRows.push({ rowNumber, reason: error.message });
             }
         }
-        
-        const doctorMap = {}; 
+
+        const doctorMap = {};
         if (allDoctorPhones.size > 0) {
             const doctorPhonesArray = Array.from(allDoctorPhones);
             const placeholderList = doctorPhonesArray.map((_, i) => `$${i + 1}`).join(',');
             const doctorResult = await pool.query(`SELECT id, phone FROM doctors WHERE phone IN (${placeholderList})`, doctorPhonesArray);
             doctorResult.rows.forEach(r => doctorMap[r.phone] = r.id);
         }
-    
-        const newDoctorInserts = []; 
-        const updateDoctorUpdates = []; 
-        const processedPhonesInBatch = new Set(); 
+
+        const newDoctorInserts = [];
+        const updateDoctorUpdates = [];
+        const processedPhonesInBatch = new Set();
         let newlyCreatedCount = 0;
         let updatedCount = 0;
-        
+
         // Use IST
         const currentIST = getIndianTimeISO();
 
@@ -560,7 +572,7 @@ export default class doctorController {
                     const { firstName, lastName } = processDoctorName(doctorName);
                     const fullName = `${firstName} ${lastName}`.trim();
                     const locationJson = JSON.stringify({ locality: location });
-    
+
                     if (existingId) {
                         updateDoctorUpdates.push({ id: existingId, phone: doctorPhone, ndmId: ndmId });
                         updatedCount++;
@@ -574,15 +586,15 @@ export default class doctorController {
                 failedRows.push({ rowNumber, reason: error.message });
             }
         }
-        
-        const updatePromises = updateDoctorUpdates.map(u => 
+
+        const updatePromises = updateDoctorUpdates.map(u =>
             pool.query("UPDATE doctors SET assigned_agent_id_online = $1, updated_at = $3 WHERE id = $2", [u.ndmId, u.id, currentIST])
         );
         await Promise.all(updatePromises);
-        
-        const doctorChunkSize = 10000; 
+
+        const doctorChunkSize = 10000;
         const doctorColumns = ['first_name', 'phone', 'location', 'assigned_agent_id_online'];
-        
+
         for (let i = 0; i < newDoctorInserts.length; i += doctorColumns.length * doctorChunkSize) {
             const chunk = newDoctorInserts.slice(i, i + doctorColumns.length * doctorChunkSize);
             if (chunk.length === 0) continue;
@@ -594,7 +606,7 @@ export default class doctorController {
             }
             await pool.query(`INSERT INTO doctors (${doctorColumns.join(', ')}) VALUES ${valuePlaceholders.join(', ')}`, chunk);
         }
-    
+
         res.status(201).json(new apiResponse(201, { newly_created_count: newlyCreatedCount, updated_count: updatedCount, failed_count: failedRows.length, failures: failedRows }, "Batch Processing Complete"));
     });
 
@@ -620,13 +632,13 @@ export default class doctorController {
         const rowsToProcess = [];
         const allDoctorPhones = new Set();
         const allAgentPhones = new Set();
-        
+
         for (let i = 0; i < doctorsCallLogs.length; i++) {
             const row = doctorsCallLogs[i];
             const rowNumber = i + 2;
             try {
-                const doctorPhoneRaw = row[2]; 
-                const agentPhoneRaw = row[11]; 
+                const doctorPhoneRaw = row[2];
+                const agentPhoneRaw = row[11];
                 const startTimeRaw = row[9];
                 if (!doctorPhoneRaw || !agentPhoneRaw) throw new Error("Missing Doctor Phone or SF Number.");
                 const doctorPhone = process_phone_no(doctorPhoneRaw);
@@ -658,29 +670,29 @@ export default class doctorController {
             const userResult = await pool.query(`SELECT id, phone FROM users WHERE phone IN (${placeholderList})`, userPhonesArray);
             userResult.rows.forEach(r => userMap[r.phone] = r.id);
         }
-        
-        const finalMeetingsToInsert = []; 
-        
+
+        const finalMeetingsToInsert = [];
+
         for (const { row, rowNumber, doctorPhone, agentPhone, timestamp } of rowsToProcess) {
             try {
                 const doctorId = doctorMap[doctorPhone];
                 const agentId = userMap[agentPhone];
                 if (!doctorId) throw new Error(`Skipped: Phone number ${doctorPhone} is not a registered Doctor.`);
                 if (!agentId) throw new Error(`Agent not found for SF Number: ${agentPhone}.`);
-                const callStatus = row[6];       
+                const callStatus = row[6];
                 const durationString = row[7];
                 const durationMinutes = convertDurationToMinutes(durationString);
-                
+
                 finalMeetingsToInsert.push(doctorId, agentId, "call", durationMinutes, null, null, null, null, false, callStatus, timestamp, timestamp);
             } catch (error) {
                 failedRows.push({ rowNumber, reason: error.message });
             }
         }
-        
+
         let meetingCount = 0;
         if (finalMeetingsToInsert.length > 0) {
             const columns = ['doctor_id', 'agent_id', 'meeting_type', 'duration', 'location', 'gps_location_link', 'meeting_notes', 'photos', 'gps_verified', 'meeting_summary', 'created_at', 'updated_at'];
-            const rowLength = columns.length; 
+            const rowLength = columns.length;
             const valuePlaceholders = finalMeetingsToInsert.map((_, i) => i + 1).reduce((acc, v, i) => {
                 if (i % rowLength === 0) {
                     const placeholders = Array.from({ length: rowLength }, (_, j) => `$${v + j}`).join(', ');
@@ -693,7 +705,7 @@ export default class doctorController {
                 const result = await pool.query(`INSERT INTO doctor_meetings (${columns.join(', ')}) VALUES ${valuePlaceholders}`, finalMeetingsToInsert);
                 meetingCount = result.rowCount;
             } catch (dbError) {
-                 meetingCount = 0; 
+                meetingCount = 0;
             }
         }
 
@@ -703,7 +715,7 @@ export default class doctorController {
     // --- 9. UPLOAD PHOTO ---
     uploadMeetingPhoto = asyncHandler(async (req, res) => {
         const file = req.file;
-        const user = req.user; 
+        const user = req.user;
         if (!file) throw new apiError(400, "No file uploaded.");
         if (!user || !user.id) throw new apiError(401, "User not authenticated.");
         try {

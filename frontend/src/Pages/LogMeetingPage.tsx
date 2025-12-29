@@ -135,7 +135,7 @@ export default function LogMeetingPage() {
 
         } catch (err) {
             console.error("Failed to fetch doctor:", err);
-           
+
             if (axios.isAxiosError(err)) {
                 if (err.response?.status === 403) {
                     // User account is deactivated
@@ -517,9 +517,9 @@ export default function LogMeetingPage() {
                                         name="locality"
                                         value={formData.locality}
                                         onChange={handleChange}
-                                        className={`${inputStyles} ${isDoctorFound ? 'text-gray-500 bg-gray-50' : ''}`}
+                                        className={`${inputStyles} ${isDoctorFound && formData.locality ? 'text-gray-500 bg-gray-50' : ''}`}
                                         placeholder={"Enter clinic area or locality"}
-                                        readOnly={isDoctorFound}
+                                        readOnly={isDoctorFound && formData.locality !== ''}
                                         disabled={loading}
                                     />
                                 </div>
