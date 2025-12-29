@@ -266,7 +266,7 @@ export default class doctorController {
 
     // --- 3. UPDATE DOCTOR ---
     updateDoctor = asyncHandler(async (req, res, next) => {
-        let { id, phone, first_name, last_name, location_locality, gps_location_link, status, assigned_agent_id_primary, assigned_agent_id_online } = req.body;
+        let { id, phone, first_name, last_name, location_locality, gps_location_link, status, assigned_agent_id_primary, assigned_agent_id_secondary } = req.body;
 
         if (!id && !phone) throw new apiError(400, "Provide id or phone.");
 

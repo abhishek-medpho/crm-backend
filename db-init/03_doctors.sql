@@ -11,8 +11,8 @@ CREATE TABLE doctors (
     onboarding_date DATE,
     status VARCHAR(20) DEFAULT 'active', -- 'active', 'inactive', 'churned'
     last_meeting TIMESTAMP,
-    assigned_agent_id_offline UUID REFERENCES users(id),
-    assigned_agent_id_online UUID REFERENCES users(id),
+    assigned_agent_id_primary UUID REFERENCES users(id),
+    assigned_agent_id_secondary UUID REFERENCES users(id),
     created_at TIMESTAMP DEFAULT NOW(),
     updated_at TIMESTAMP DEFAULT NOW()
 );
