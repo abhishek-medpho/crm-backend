@@ -265,8 +265,23 @@ export default function BookOpdPage() {
     try {
       const res = await api.get(`/doctors/get-by-phone/${phone}`);
       setFormData((prev) => ({ ...prev, referee_name: res.data.data.name }));
-    } catch {
-      setDoctorError("Doctor not found. You can enter the doctor's name manually.");
+    } catch (err) {
+      
+      if (axios.isAxiosError(err)) {
+        if (err.response?.status === 403) {
+          // User account is deactivated
+          setDoctorError("Your account has been deactivated. Please contact your administrator.");
+        } else if (err.response?.status === 404) {
+          // Doctor not found in database
+          setDoctorError("Doctor not found. You can enter the doctor's name manually.");
+        } else {
+          // Other errors (500, network issues, etc.)
+          setDoctorError("Unable to fetch doctor details. Please try again or enter manually.");
+        }
+      } else {
+        // Non-Axios errors
+        setDoctorError("An error occurred. Please enter the doctor's name manually.");
+      }
       // Don't clear the name field - allow manual entry
     } finally {
       setIsFetchingDoctor(false);

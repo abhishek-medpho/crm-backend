@@ -135,7 +135,22 @@ export default function LogMeetingPage() {
 
         } catch (err) {
             console.error("Failed to fetch doctor:", err);
-            setDoctorError("Doctor not found. Please enter details.");
+           
+            if (axios.isAxiosError(err)) {
+                if (err.response?.status === 403) {
+                    // User account is deactivated
+                    setDoctorError("Your account has been deactivated. Please contact your administrator.");
+                } else if (err.response?.status === 404) {
+                    // Doctor not found in database
+                    setDoctorError("Doctor not found. Please enter details.");
+                } else {
+                    // Other errors (500, network issues, etc.)
+                    setDoctorError("Unable to fetch doctor details. Please try again or enter manually.");
+                }
+            } else {
+                // Non-Axios errors
+                setDoctorError("An error occurred. Please enter the doctor details manually.");
+            }
             setIsDoctorFound(false);
             setFormData(prev => ({ ...prev, doctor_name: '', locality: '' }));
         } finally {
