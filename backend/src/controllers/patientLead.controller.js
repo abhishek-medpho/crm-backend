@@ -133,13 +133,13 @@ export default class patientLeadController {
                     return doctorCheck.rows[0].id;
                 }
 
-                // Create minimal doctor record in doctors table
+                // Create minimal doctor record in doctors table                
                 const { firstName, lastName } = processDoctorName(name);
                 const newDoctor = await pool.query(
-                    `INSERT INTO doctors (first_name, last_name, phone, created_at, updated_at)
-                     VALUES ($1, $2, $3, $4, $5)
+                    `INSERT INTO doctors (first_name, last_name, phone, assigned_agent_id_primary, created_at, updated_at)
+                     VALUES ($1, $2, $3, $4, $5, $6)
                      RETURNING id`,
-                    [firstName, lastName || '', phone, created_at, created_at]
+                    [firstName, lastName || '', phone, loggedInUser.id, created_at, created_at]
                 );
 
                 return newDoctor.rows[0].id;
