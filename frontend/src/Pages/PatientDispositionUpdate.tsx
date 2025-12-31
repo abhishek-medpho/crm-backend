@@ -13,6 +13,8 @@ const DISPOSITION_OPTIONS = [
   "Duplicate Lead",
   "UP CM File Submitted",
   "Medicine Subscribed",
+  "Approval Pending",
+  "IPD Cancelled",
   "Treatment Not Covered under Ayushman",
   "OPD Revisit",
   "OPD Missed",
