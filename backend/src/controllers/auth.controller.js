@@ -8,6 +8,7 @@ import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
 import { randomInt, randomBytes } from "crypto";
 import { logAudit } from "../utils/auditLogger.util.js";
+import { cleanupExpiredTokens } from "../utils/tokenCleanup.util.js";
 
 const OTP_RATE_LIMIT_COUNT = 3;
 const OTP_RATE_LIMIT_WINDOW_MINUTES = 15;
@@ -40,7 +41,7 @@ export default class authController {
         const otpCount = parseInt(rateLimitResult.rows[0].count, 10);
         if (otpCount >= OTP_RATE_LIMIT_COUNT) {
             throw new apiError(
-                429, 
+                429,
                 `Too many OTP requests. Please try again in ${OTP_RATE_LIMIT_WINDOW_MINUTES} minutes.`
             );
         }
@@ -59,9 +60,9 @@ export default class authController {
 
         // 5. Transaction Logic
         const otp_hash = await bcrypt.hash(otp, 10);
-        
-       
-        const expires_at = getIndianTimeISO(10); 
+
+
+        const expires_at = getIndianTimeISO(10);
 
         const client = await pool.connect();
         try {
@@ -88,25 +89,25 @@ export default class authController {
 
         const phone_processed = process_phone_no(phone);
 
-    
+
         const userResult = await pool.query(
             "SELECT id, first_name, last_name, phone, role FROM users WHERE phone = $1",
             [phone_processed]
         );
         if (userResult.rows.length === 0) throw new apiError(404, "User Not Found");
-        
+
         const user = userResult.rows[0];
 
         // 2. Find a matching, valid OTP for that user
         const currentIST = getIndianTimeISO();
-        
+
         const otpResult = await pool.query(
             `SELECT id, otp_hash FROM otps 
              WHERE user_id = $1 AND expires_at > $2 AND is_used = false
-             ORDER BY created_at DESC`, 
+             ORDER BY created_at DESC`,
             [user.id, currentIST]
         );
-        
+
         if (otpResult.rows.length === 0) {
             throw new apiError(401, "Invalid or expired OTP");
         }
@@ -117,10 +118,10 @@ export default class authController {
             const didMatch = await bcrypt.compare(otp, row.otp_hash);
             if (didMatch) {
                 isOtpValid = true;
-                break; 
+                break;
             }
         }
-        
+
         if (!isOtpValid) {
             await logAudit(user.id, 'LOGIN_FAILED', 'auth', null, { reason: 'Invalid OTP provided' });
             throw new apiError(401, "Invalid or expired OTP");
@@ -136,21 +137,21 @@ export default class authController {
             await client.query('COMMIT');
         } catch (e) {
             await client.query('ROLLBACK');
-            throw e; 
+            throw e;
         } finally {
             client.release();
         }
 
         // 5. Create Tokens (INCLUDE ROLE IN PAYLOAD)
         const accessTokenPayload = { id: user.id, phone: user.phone, role: user.role };
-        const accessTokenExpiresIn = '15m'; 
+        const accessTokenExpiresIn = '15m';
         const accessToken = jwt.sign(accessTokenPayload, process.env.JWT_SECRET, { expiresIn: accessTokenExpiresIn });
-        const accessTokenExpiresAt = Date.now() + (15 * 60 * 1000); 
+        const accessTokenExpiresAt = Date.now() + (15 * 60 * 1000);
 
         // --- Refresh Token ---
         const refreshToken = randomBytes(64).toString('hex');
         // 7 days in minutes = 10080
-        const refreshTokenExpiresAt = getIndianTimeISO(10080); 
+        const refreshTokenExpiresAt = getIndianTimeISO(10080);
         const refreshTokenHash = await bcrypt.hash(refreshToken, 10);
 
         await pool.query(
@@ -167,17 +168,20 @@ export default class authController {
         };
 
         await logAudit(user.id, 'LOGIN_SUCCESS', 'auth', null, { ip: req.ip });
-        
+
         res.status(200).json(new apiResponse(
             200,
-            { 
+            {
                 user: userData,
                 accessToken: accessToken,
                 accessTokenExpiresAt: accessTokenExpiresAt,
-                refreshToken: refreshToken 
+                refreshToken: refreshToken
             },
             "Login successful"
         ));
+
+        // Cleanup expired tokens asynchronously (non-blocking)
+        cleanupExpiredTokens().catch(err => console.error('Cleanup failed:', err));
     });
 
     // --- 3. REFRESH TOKEN ---
@@ -193,7 +197,7 @@ export default class authController {
         if (!userId) throw new apiError(401, "Invalid old access token");
 
         const currentIST = getIndianTimeISO();
-        
+
         const tokenResult = await pool.query(
             "SELECT id, token_hash FROM crm.user_refresh_tokens WHERE user_id = $1 AND expires_at > $2",
             [userId, currentIST]
@@ -218,7 +222,7 @@ export default class authController {
         // FETCH ROLE AGAIN to ensure fresh permissions
         const userResult = await pool.query("SELECT id, phone, first_name, role FROM crm.users WHERE id = $1", [userId]);
         const user = userResult.rows[0];
-        
+
         // Include role in new Access Token
         const accessTokenPayload = { id: user.id, phone: user.phone, role: user.role };
         const accessTokenExpiresIn = '15m';
@@ -229,7 +233,7 @@ export default class authController {
         const newRefreshTokenExpiresAt = getIndianTimeISO(10080); // 7 days IST
         const newRefreshTokenHash = await bcrypt.hash(newRefreshToken, 10);
         const createdTime = getIndianTimeISO();
-        
+
         await pool.query(
             "INSERT INTO crm.user_refresh_tokens (user_id, token_hash, expires_at, created_at) VALUES ($1, $2, $3, $4)",
             [user.id, newRefreshTokenHash, newRefreshTokenExpiresAt, createdTime]
@@ -244,5 +248,8 @@ export default class authController {
             },
             "Token refreshed successfully"
         ));
+
+        // Cleanup expired tokens asynchronously (non-blocking)
+        cleanupExpiredTokens().catch(err => console.error('Cleanup failed:', err));
     });
 }

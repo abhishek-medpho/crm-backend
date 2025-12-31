@@ -3,7 +3,7 @@ import { connectDB } from "./DB/db.js";
 import "dotenv/config";
 import os from "os";
 import process from "process";
-import client from "prom-client"; 
+import client from "prom-client";
 
 // Routers
 import userRouter from "./routes/user.routes.js";
@@ -12,6 +12,7 @@ import patientLeadRouter from "./routes/patientLeads.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import hospitalRouter from "./routes/hospital.routes.js";
 import { startSheetWorker } from "./utils/sheetQueue.util.js";
+import { startTokenCleanupScheduler } from "./cleanupScheduler.js";
 
 const port = process.env.PORT || 8000;
 
@@ -58,6 +59,7 @@ connectDB()
     dbConnected = true;
 
     startSheetWorker();
+    startTokenCleanupScheduler();
 
     // Register routers
     app.use("/api/v1/users", userRouter);
