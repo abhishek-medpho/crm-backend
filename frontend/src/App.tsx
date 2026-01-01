@@ -1,6 +1,6 @@
 import "./App.css";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
-import { Toaster } from "react-hot-toast";
+import { ToastProvider } from "./components/ToastProvider";
 import Home from "./Pages/home";
 import LoginPage from "./Pages/LoginPage";
 import BookOpdPage from "./Pages/BookOpdPage";
@@ -28,33 +28,7 @@ function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode,
 
 function App() {
   return (
-    <>
-
-      <Toaster
-        position="top-right"
-        toastOptions={{
-          duration: 4000,
-          style: {
-            background: '#fff',
-            color: '#333',
-            border: '1px solid #e5e7eb',
-            boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)',
-          },
-          success: {
-            iconTheme: {
-              primary: '#10b981', // emerald-500
-              secondary: '#fff',
-            },
-          },
-          error: {
-            iconTheme: {
-              primary: '#ef4444', // red-500
-              secondary: '#fff',
-            },
-          },
-        }}
-      />
-
+    <ToastProvider>
       <BrowserRouter>
         <Routes>
           <Route
@@ -87,7 +61,7 @@ function App() {
           <Route path="/login" element={<LoginPage />} />
         </Routes>
       </BrowserRouter>
-    </>
+    </ToastProvider>
   );
 }
 

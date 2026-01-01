@@ -3,6 +3,8 @@ import { useNavigate } from "react-router-dom";
 import api from "../api";
 import axios from "axios";
 import Header from "../components/Header";
+import { useToast } from "../components/ToastProvider";
+import LoadingButton, { type ButtonState } from "../components/LoadingButton";
 
 const DISPOSITION_OPTIONS = [
   "Admitted",
@@ -31,14 +33,13 @@ interface HospitalOption {
 
 export default function PatientDispositionUpdate() {
   const navigate = useNavigate();
-
-
+  const { showSuccess, showError } = useToast();
 
   const [bookingRef, setBookingRef] = useState("");
   const [isFetched, setIsFetched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<ButtonState>('idle');
   const [error, setError] = useState("");
-
 
   const [successData, setSuccessData] = useState<{ patientName: string, status: string } | null>(null);
 
@@ -126,12 +127,15 @@ export default function PatientDispositionUpdate() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setButtonState('loading');
     setError("");
     setSuccessData(null);
 
     if (!newDisposition) {
       setError("Please select a new disposition.");
       setLoading(false);
+      setButtonState('error');
+      setTimeout(() => setButtonState('idle'), 2000);
       return;
     }
 
@@ -148,18 +152,32 @@ export default function PatientDispositionUpdate() {
     try {
       await api.post("/patientLeads/update-disposition", payload);
 
-      // Trigger Success Modal
-      setSuccessData({
-        patientName: patientDetails.patient_name,
-        status: newDisposition
-      });
+      // Show success state briefly
+      setButtonState('success');
+
+      // Show toast notification
+      showSuccess(`Status updated to ${newDisposition} successfully!`);
+
+      // Trigger Success Modal after a short delay
+      setTimeout(() => {
+        setSuccessData({
+          patientName: patientDetails.patient_name,
+          status: newDisposition
+        });
+        setButtonState('idle');
+      }, 500);
 
     } catch (err) {
+      setButtonState('error');
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Failed to update.");
+        const errorMsg = err.response?.data?.message || "Failed to update.";
+        setError(errorMsg);
+        showError(errorMsg);
       } else {
         setError("An error occurred.");
+        showError("An error occurred.");
       }
+      setTimeout(() => setButtonState('idle'), 2000);
     } finally {
       setLoading(false);
     }
@@ -319,13 +337,15 @@ export default function PatientDispositionUpdate() {
                 </div>
 
                 <div className="flex gap-4 pt-2">
-                  <button
+                  <LoadingButton
                     type="submit"
-                    disabled={loading}
+                    state={buttonState}
+                    loadingText="Updating..."
+                    successText="Updated!"
                     className="flex-1 py-3 px-4 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 disabled:opacity-50 cursor-pointer"
                   >
-                    {loading ? "Updating..." : "Submit Update"}
-                  </button>
+                    Submit Update
+                  </LoadingButton>
                   <button
                     type="button"
                     onClick={() => {

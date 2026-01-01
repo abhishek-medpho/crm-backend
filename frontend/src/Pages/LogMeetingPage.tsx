@@ -3,6 +3,8 @@ import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import axios from 'axios';
 import Header from "../components/Header";
+import { useToast } from "../components/ToastProvider";
+import LoadingButton, { type ButtonState } from "../components/LoadingButton";
 
 const getTodayDate = () => {
     const now = new Date();
@@ -22,6 +24,7 @@ const FACILITIES_LIST = [
 
 export default function LogMeetingPage() {
     const navigate = useNavigate();
+    const { showSuccess, showError } = useToast();
 
     // --- 1. State for ALL form fields ---
     const [formData, setFormData] = useState({
@@ -57,6 +60,7 @@ export default function LogMeetingPage() {
 
     // --- 3. State for form submission and UI ---
     const [loading, setLoading] = useState(false);
+    const [buttonState, setButtonState] = useState<ButtonState>('idle');
     const [error, setError] = useState('');
 
 
@@ -316,24 +320,34 @@ export default function LogMeetingPage() {
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
+        setButtonState('loading');
         setError('');
         setSuccessData(null);
 
         if (!formData.doctor_name || !formData.doctor_phone_number) {
             setError("Doctor Name and Phone are required.");
             setLoading(false);
+            setButtonState('error');
+            showError("Doctor Name and Phone are required.");
+            setTimeout(() => setButtonState('idle'), 2000);
             return;
         }
 
         if (!clinicFile || !selfieFile) {
             setError("Please upload both Clinic Photo and Selfie.");
             setLoading(false);
+            setButtonState('error');
+            showError("Please upload both Clinic Photo and Selfie.");
+            setTimeout(() => setButtonState('idle'), 2000);
             return;
         }
 
         if (!gpsLocation) {
             setError("GPS location is required. Please enable location services and reload.");
             setLoading(false);
+            setButtonState('error');
+            showError("GPS location is required.");
+            setTimeout(() => setButtonState('idle'), 2000);
             return;
         }
 
@@ -374,17 +388,29 @@ export default function LogMeetingPage() {
                 }
             });
 
+            // Show success state
+            setButtonState('success');
+            showSuccess(`Meeting with ${response.data.data.doctor_name} logged successfully!`);
 
-            setSuccessData({
-                doctorName: response.data.data.doctor_name
-            });
+            // Show modal after brief delay
+            setTimeout(() => {
+                setSuccessData({
+                    doctorName: response.data.data.doctor_name
+                });
+                setButtonState('idle');
+            }, 500);
 
         } catch (err: unknown) {
+            setButtonState('error');
             if (axios.isAxiosError(err)) {
-                setError(err.response?.data?.message || "An error occurred.");
+                const errorMsg = err.response?.data?.message || "An error occurred.";
+                setError(errorMsg);
+                showError(errorMsg);
             } else {
                 setError("An unexpected error occurred.");
+                showError("An unexpected error occurred.");
             }
+            setTimeout(() => setButtonState('idle'), 2000);
         }
         setLoading(false);
     };
@@ -732,18 +758,15 @@ export default function LogMeetingPage() {
 
                         {/* Submit Button */}
                         <div className="pt-6">
-                            <button
+                            <LoadingButton
                                 type="submit"
-                                disabled={loading}
+                                state={buttonState}
+                                loadingText="Submitting..."
+                                successText="Success!"
                                 className="w-full py-3 px-4 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 text-white font-semibold rounded-lg shadow-lg transition-all duration-200 transform hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
                             >
-                                {loading ? (
-                                    <span className="flex items-center justify-center">
-                                        <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                                        Submitting...
-                                    </span>
-                                ) : "Submit Meeting Log"}
-                            </button>
+                                Submit Meeting Log
+                            </LoadingButton>
                         </div>
 
                     </form>

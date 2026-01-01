@@ -2,8 +2,9 @@ import { useState, useMemo, useEffect, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import axios from "axios";
-
 import Header from "../components/Header";
+import { useToast } from "../components/ToastProvider";
+import LoadingButton, { type ButtonState } from "../components/LoadingButton";
 
 // --- Helper Functions ---
 const getTodayDate = () => new Date().toISOString().split("T")[0];
@@ -40,6 +41,7 @@ interface OpdFormData {
 export default function BookOpdPage() {
   const navigate = useNavigate();
   const dropdownRef = useRef<HTMLDivElement>(null);
+  const { showSuccess, showError } = useToast();
 
   const [cities, setCities] = useState<string[]>([]);
   const [hospitals, setHospitals] = useState<Hospital[]>([]);
@@ -72,6 +74,7 @@ export default function BookOpdPage() {
 
   // --- 3. State for UI and errors ---
   const [loading, setLoading] = useState(false);
+  const [buttonState, setButtonState] = useState<ButtonState>('idle');
   const [error, setError] = useState("");
 
   // NEW: State for Success Modal Data
@@ -266,7 +269,7 @@ export default function BookOpdPage() {
       const res = await api.get(`/doctors/get-by-phone/${phone}`);
       setFormData((prev) => ({ ...prev, referee_name: res.data.data.name }));
     } catch (err) {
-      
+
       if (axios.isAxiosError(err)) {
         if (err.response?.status === 403) {
           // User account is deactivated
@@ -320,6 +323,7 @@ export default function BookOpdPage() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
+    setButtonState('loading');
     setError("");
     setSuccessData(null);
 
@@ -327,6 +331,9 @@ export default function BookOpdPage() {
     if (!formData.patient_name || !formData.patient_phone || !formData.hospital_ids.length || !formData.medical_condition || !aadharFile) {
       setError("Please fill all required fields, including Aadhar card.");
       setLoading(false);
+      setButtonState('error');
+      showError("Please fill all required fields, including Aadhar card.");
+      setTimeout(() => setButtonState('idle'), 2000);
       return;
     }
 
@@ -351,18 +358,30 @@ export default function BookOpdPage() {
         headers: { "Content-Type": "multipart/form-data" },
       });
 
-      // Show Success Modal
-      setSuccessData({
-        ref: response.data.data.booking_reference,
-        name: response.data.data.patient_name
-      });
+      // Show success state
+      setButtonState('success');
+      showSuccess(`OPD booked successfully for ${response.data.data.patient_name}!`);
+
+      // Show Success Modal after brief delay
+      setTimeout(() => {
+        setSuccessData({
+          ref: response.data.data.booking_reference,
+          name: response.data.data.patient_name
+        });
+        setButtonState('idle');
+      }, 500);
 
     } catch (err) {
+      setButtonState('error');
       if (axios.isAxiosError(err)) {
-        setError(err.response?.data?.message || "Failed to book OPD.");
+        const errorMsg = err.response?.data?.message || "Failed to book OPD.";
+        setError(errorMsg);
+        showError(errorMsg);
       } else {
         setError("An unexpected error occurred.");
+        showError("An unexpected error occurred.");
       }
+      setTimeout(() => setButtonState('idle'), 2000);
     } finally {
       setLoading(false);
     }
@@ -707,18 +726,15 @@ export default function BookOpdPage() {
 
             {/* Submit Button */}
             <div className="pt-6">
-              <button
+              <LoadingButton
                 type="submit"
-                disabled={loading}
+                state={buttonState}
+                loadingText="Processing Booking..."
+                successText="Booking Confirmed!"
                 className="w-full py-3.5 px-4 bg-gradient-to-r from-blue-600 to-indigo-600 hover:from-blue-700 hover:to-indigo-700 text-white font-bold rounded-xl shadow-lg hover:shadow-xl transition-all duration-200 transform hover:scale-[1.01] active:scale-[0.99] disabled:opacity-50 disabled:cursor-not-allowed disabled:transform-none"
               >
-                {loading ? (
-                  <span className="flex items-center justify-center">
-                    <svg className="animate-spin -ml-1 mr-3 h-5 w-5 text-white" fill="none" viewBox="0 0 24 24"><circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle><path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path></svg>
-                    Processing Booking...
-                  </span>
-                ) : "Confirm OPD Booking"}
-              </button>
+                Confirm OPD Booking
+              </LoadingButton>
             </div>
 
           </form>

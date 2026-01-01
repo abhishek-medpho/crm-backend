@@ -11,6 +11,7 @@ services:
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql 
+      # - ./db-init:/docker-entrypoint-initdb.d
     networks:
       - medpho_net
     restart: unless-stopped
