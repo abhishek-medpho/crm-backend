@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import api from '../api';
 import axios from 'axios';
-import Header from "../components/Header";
+// Header provided by Layout
 import { useToast } from "../components/ToastProvider";
 import LoadingButton, { type ButtonState } from "../components/LoadingButton";
 
@@ -459,11 +459,8 @@ export default function LogMeetingPage() {
                 </div>
             )}
 
-            {/* Header */}
-            <Header showBack={true} />
-
             {/* Main Content */}
-            <main className="max-w-4xl w-full mx-auto px-4 py-8">
+            <main className="max-w-4xl mx-auto lg:px-4 w-full">
                 <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
                     {/* Page Header */}
                     <div className="bg-purple-600 px-6 py-8">

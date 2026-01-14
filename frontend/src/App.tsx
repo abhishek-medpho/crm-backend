@@ -7,17 +7,19 @@ import BookOpdPage from "./Pages/BookOpdPage";
 import LogMeetingPage from "./Pages/LogMeetingPage";
 import UpdatePhonePage from "./Pages/UpdatePhonePage";
 import PatientDispositionUpdate from "./Pages/PatientDispositionUpdate";
+import Layout from "./components/Layout";
+import OPDBookings from "./Pages/OPDBookings";
+import DoctorPortfolio from "./Pages/DoctorPortfolio";
+import MyMeetings from "./Pages/MyMeetings";
 
 function ProtectedRoute({ children, allowedRoles }: { children: React.ReactNode, allowedRoles?: string[] }) {
   const token = localStorage.getItem('authToken');
-  // Parse user to check role
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : {};
 
   if (!token) {
     return <Navigate to="/login" replace />;
   }
-
 
   if (allowedRoles && !allowedRoles.includes(user.role)) {
     return <Navigate to="/" replace />;
@@ -31,34 +33,23 @@ function App() {
     <ToastProvider>
       <BrowserRouter>
         <Routes>
-          <Route
-            path="/"
-            element={<ProtectedRoute><Home /></ProtectedRoute>}
-          />
+          <Route path="/login" element={<LoginPage />} />
 
-          <Route
-            path="/book-opd"
-            element={<ProtectedRoute><BookOpdPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/log-meeting"
-            element={<ProtectedRoute><LogMeetingPage /></ProtectedRoute>}
-          />
-          <Route
-            path="/update-patient-phone"
-            element={<ProtectedRoute><UpdatePhonePage /></ProtectedRoute>}
-          />
-
-          <Route
-            path="/update-disposition"
-            element={
-              <ProtectedRoute allowedRoles={['operations', 'super_admin']}>
+          <Route path="/" element={<ProtectedRoute><Layout /></ProtectedRoute>}>
+            <Route index element={<Home />} />
+            <Route path="book-opd" element={<BookOpdPage />} />
+            <Route path="log-meeting" element={<LogMeetingPage />} />
+            <Route path="update-patient-phone" element={<UpdatePhonePage />} />
+            <Route path="update-disposition" element={
+              <ProtectedRoute allowedRoles={["operations", "super_admin"]}>
                 <PatientDispositionUpdate />
               </ProtectedRoute>
-            }
-          />
+            } />
+            <Route path="opd-bookings" element={<OPDBookings />} />
+            <Route path="doctor-portfolio" element={<DoctorPortfolio />} />
+            <Route path="my-meetings" element={<MyMeetings />} />
+          </Route>
 
-          <Route path="/login" element={<LoginPage />} />
         </Routes>
       </BrowserRouter>
     </ToastProvider>

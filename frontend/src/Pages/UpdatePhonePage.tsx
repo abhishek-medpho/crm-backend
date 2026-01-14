@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useNavigate } from "react-router-dom";
 import api from "../api";
 import axios from "axios";
-import Header from "../components/Header";
+// Header provided by Layout
 
 export default function UpdatePhonePage() {
   const navigate = useNavigate();
@@ -130,11 +130,8 @@ export default function UpdatePhonePage() {
         </div>
       )}
 
-      {/* Header */}
-      <Header showBack={true} />
-
       {/* Main Content */}
-      <main className="max-w-4xl w-full h-full mx-auto px-2 md:px-6 lg:px-8 py-8">
+      <main className="max-w-4xl mx-auto md:px-6 lg:px-8 w-full">
         <div className="bg-white rounded-2xl shadow-xl border border-gray-100 overflow-hidden">
 
           {/* Page Header Banner */}

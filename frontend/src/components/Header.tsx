@@ -2,9 +2,10 @@ import { useNavigate } from "react-router-dom";
 
 interface HeaderProps {
     showBack?: boolean;
+    onMenuToggle?: () => void;
 }
 
-export default function Header({ showBack = false }: HeaderProps) {
+export default function Header({ showBack = false, onMenuToggle }: HeaderProps) {
     const navigate = useNavigate();
     const userString = localStorage.getItem('user');
     const user = userString ? JSON.parse(userString) : { name: 'User', role: '' };
@@ -22,6 +23,16 @@ export default function Header({ showBack = false }: HeaderProps) {
 
                     {/* Left: Back Button or Logo */}
                     <div className="flex-shrink-0 flex items-center gap-4">
+                        {/* Hamburger / Menu Toggle */}
+                        <button
+                            onClick={() => onMenuToggle && onMenuToggle()}
+                            className="p-2 -ml-2 text-gray-600 hover:text-gray-900 transition-colors rounded-md hover:bg-gray-100"
+                            aria-label="Open sidebar"
+                        >
+                            <svg className="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" />
+                            </svg>
+                        </button>
                         {showBack && (
                             <button
                                 onClick={() => navigate(-1)}
