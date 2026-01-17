@@ -1,19 +1,67 @@
 import { Link } from 'react-router-dom';
-import Header from '../components/Header';
+import { useEffect, useState } from 'react';
+import api from '../api';
 
 function Home() {
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { name: 'User', role: '' };
   const canUpdateDisposition = user.role === 'operations' || user.role === 'super_admin';
+  
+  const [matrix, setMatrix] = useState({ meetings_this_month: 0, leads_this_month: 0, ipd_this_month: 0 });
+  const [loadingMatrix, setLoadingMatrix] = useState(true);
+
+  useEffect(() => {
+    api.get('/opd/getMatrix')
+      .then(res => {
+        setMatrix(res.data?.data || { meetings_this_month: 0, leads_this_month: 0, ipd_this_month: 0 });
+      })
+      .catch(err => {
+        console.error('Failed to fetch matrix data', err);
+      })
+      .finally(() => setLoadingMatrix(false));
+  }, []);
 
   return (
-    <div className="min-h-screen w-full bg-gray-50 flex flex-col font-sans">
-
-      <Header />
+    <div className="w-full bg-gray-50 flex flex-col font-sans">
 
       {/* Main Content */}
-      <main className="flex-grow max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 w-full">
+      <main className="flex-grow max-w-7xl mx-auto w-full">
 
+        {/* Matrix Cards */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+          {/* Card 1: Leads This Month */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Leads This Month</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{loadingMatrix ? '-' : matrix.leads_this_month}</p>
+              </div>
+              <div className="text-4xl opacity-20">📋</div>
+            </div>
+          </div>
+
+          {/* Card 2: IPDs This Month */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">IPDs This Month</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{loadingMatrix ? '-' : matrix.ipd_this_month}</p>
+              </div>
+              <div className="text-4xl opacity-20">🏥</div>
+            </div>
+          </div>
+
+          {/* Card 3: Meetings This Month */}
+          <div className="bg-white p-4 rounded-lg shadow-sm border border-gray-200">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-gray-600 text-sm font-medium">Meetings This Month</p>
+                <p className="text-3xl font-bold text-gray-900 mt-1">{loadingMatrix ? '-' : matrix.meetings_this_month}</p>
+              </div>
+              <div className="text-4xl opacity-20">📞</div>
+            </div>
+          </div>
+        </div>
 
         {/* Action Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -92,15 +140,7 @@ function Home() {
 
       </main>
 
-      <footer className="bg-white border-t border-gray-200 mt-auto">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6 flex flex-col md:flex-row justify-between items-center text-sm text-gray-400">
-          <p>© 2025 Medpho CRM. All rights reserved.</p>
-          <div className="mt-2 md:mt-0 flex space-x-4">
-            <a href="#" className="hover:text-gray-600">Privacy Policy</a>
-            <a href="#" className="hover:text-gray-600">Terms of Service</a>
-          </div>
-        </div>
-      </footer>
+      {/* Footer moved to Layout to keep it at the bottom of the page */}
     </div>
   );
 }

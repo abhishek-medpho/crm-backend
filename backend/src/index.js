@@ -11,6 +11,7 @@ import doctorRouter from "./routes/doctor.routes.js";
 import patientLeadRouter from "./routes/patientLeads.routes.js";
 import authRouter from "./routes/auth.routes.js";
 import hospitalRouter from "./routes/hospital.routes.js";
+import opdRouter from "./routes/opd.routes.js";
 import { startSheetWorker } from "./utils/sheetQueue.util.js";
 import { startTokenCleanupScheduler } from "./cleanupScheduler.js";
 
@@ -67,6 +68,7 @@ connectDB()
     app.use("/api/v1/patientLeads", patientLeadRouter);
     app.use("/api/v1/auth", authRouter);
     app.use("/api/v1/hospitals", hospitalRouter);
+    app.use("/api/v1/opd", opdRouter);
 
     // Root route
     app.get("/", (req, res) => {
