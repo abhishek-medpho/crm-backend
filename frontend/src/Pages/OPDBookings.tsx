@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api";
 
 type SortOrder = 'asc' | 'desc' | null;
@@ -43,16 +43,16 @@ export default function OPDBookings() {
             const sorted = [...rows].sort((a, b) => {
                 const valA = a[column];
                 const valB = b[column];
-                
+
                 // Handle date columns
                 if (column === 'appointment_date' || column === 'created_at' || column === 'updated_at') {
                     const dateA = new Date(valA || '').getTime();
                     const dateB = new Date(valB || '').getTime();
                     return newOrder === 'asc' ? dateA - dateB : dateB - dateA;
                 }
-                
+
                 // Default string comparison
-                return newOrder === 'asc' 
+                return newOrder === 'asc'
                     ? String(valA || '').localeCompare(String(valB || ''))
                     : String(valB || '').localeCompare(String(valA || ''));
             });

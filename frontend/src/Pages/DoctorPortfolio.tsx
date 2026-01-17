@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api";
 
 type SortOrder = 'asc' | 'desc' | null;
@@ -43,23 +43,23 @@ export default function DoctorPortfolio() {
             const sorted = [...rows].sort((a, b) => {
                 const valA = a[column];
                 const valB = b[column];
-                
+
                 // Handle date columns
                 if (column === 'first_meeting' || column === 'last_meeting') {
                     const dateA = new Date(valA || '').getTime();
                     const dateB = new Date(valB || '').getTime();
                     return newOrder === 'asc' ? dateA - dateB : dateB - dateA;
                 }
-                
+
                 // Handle numeric columns
                 if (column === 'number_of_meetings' || column === 'number_of_leads' || column === 'number_of_ipd') {
                     const numA = Number(valA) || 0;
                     const numB = Number(valB) || 0;
                     return newOrder === 'asc' ? numA - numB : numB - numA;
                 }
-                
+
                 // Default string comparison
-                return newOrder === 'asc' 
+                return newOrder === 'asc'
                     ? String(valA || '').localeCompare(String(valB || ''))
                     : String(valB || '').localeCompare(String(valA || ''));
             });

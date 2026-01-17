@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from "react";
+import { useEffect, useState, useRef } from "react";
 import api from "../api";
 
 type SortOrder = 'asc' | 'desc' | null;
@@ -43,23 +43,23 @@ export default function MyMeetings() {
             const sorted = [...rows].sort((a, b) => {
                 const valA = a[column];
                 const valB = b[column];
-                
+
                 // Handle date columns
                 if (column === 'meeting_date') {
                     const dateA = new Date(valA || '').getTime();
                     const dateB = new Date(valB || '').getTime();
                     return newOrder === 'asc' ? dateA - dateB : dateB - dateA;
                 }
-                
+
                 // Handle numeric columns
                 if (column === 'duration') {
                     const numA = Number(valA) || 0;
                     const numB = Number(valB) || 0;
                     return newOrder === 'asc' ? numA - numB : numB - numA;
                 }
-                
+
                 // Default string comparison
-                return newOrder === 'asc' 
+                return newOrder === 'asc'
                     ? String(valA || '').localeCompare(String(valB || ''))
                     : String(valB || '').localeCompare(String(valA || ''));
             });
@@ -78,7 +78,7 @@ export default function MyMeetings() {
     if (!rows.length) return <div className="py-8">No meetings found.</div>;
 
     const columns = [
-        'agent_name', 'doctor_name', 'meeting_date', 'gps_location_link', 'clinic_image', 
+        'agent_name', 'doctor_name', 'meeting_date', 'gps_location_link', 'clinic_image',
         'selfie_image', 'duration', 'meeting_notes', 'meeting_summary'
     ];
 
