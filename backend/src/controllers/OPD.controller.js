@@ -1,4 +1,7 @@
 import apiResponse from "../utils/apiResponse.utils.js";
+import { google } from 'googleapis';
+import path from 'path';
+import { fileURLToPath } from 'url';
 import asyncHandler from "../utils/asynchandler.utils.js";
 import { pool } from "../DB/db.js";
 export default class opdController {
@@ -9,7 +12,7 @@ export default class opdController {
      */
     getOPDBookings = asyncHandler(async (req, res) => {
         const loggedInUser = req.user;
-        const agent_name = loggedInUser.first_name;
+        const agent_name = 'Shahnawaz'; //loggedInUser.first_name;
         const result = await pool.query(
             `WITH HospitalList AS ( SELECT b.id AS booking_id, STRING_AGG(h.hospital_name, ', ')
              AS hospital_names FROM crm.opd_bookings b LEFT JOIN crm.hospitals h ON h.id = ANY(b.hospital_ids)
@@ -31,7 +34,7 @@ export default class opdController {
      */
     getDoctorPortfolio = asyncHandler(async (req, res) => {
         const loggedInUser = req.user;
-        const agent_name = loggedInUser.first_name;
+        const agent_name = 'Shahnawaz'; //loggedInUser.first_name;
         const result = await pool.query(
             `SELECT 
                 CONCAT(u.first_name, ' ', u.last_name) AS Agent_Name, 
@@ -68,7 +71,7 @@ export default class opdController {
      */
     getMeetings = asyncHandler(async (req, res) => {
         const loggedInUser = req.user;
-        const agent_name = loggedInUser.first_name;
+        const agent_name = 'Shahnawaz'; //loggedInUser.first_name;
         const result = await pool.query(
             `SELECT CONCAT(u.first_name, ' ', u.last_name) AS Agent_Name, CONCAT(d.first_name, ' ',
              d.last_name) AS Doctor_Name, dm.created_at as Meeting_date, dm.Gps_Location_Link, dm.photos->>'clinicImage'
@@ -122,6 +125,32 @@ export default class opdController {
         };
 
         res.status(200).json(new apiResponse(200, matrix, "Matrix data fetched successfully"));
+    });
+
+    /**
+     * @description Proxy Google Drive image by file ID
+     * @route GET /api/v1/OPD/public-image/:id
+     */
+    getPublicImage = asyncHandler(async (req, res) => {
+        const fileId = req.params.id;
+        // Setup Google Drive API client (ESM compatible)
+        const __filename = fileURLToPath(import.meta.url);
+        const __dirname = path.dirname(__filename);
+        const auth = new google.auth.GoogleAuth({
+            keyFile: path.join(__dirname, '../../drive.json'),
+            scopes: ['https://www.googleapis.com/auth/drive'],
+        });
+        const drive = google.drive({ version: 'v3', auth });
+        try {
+            const response = await drive.files.get({
+                fileId,
+                alt: 'media'
+            }, { responseType: 'stream' });
+            res.setHeader('Content-Type', response.headers['content-type'] || 'image/jpeg');
+            response.data.pipe(res);
+        } catch (error) {
+            res.status(404).json({ error: 'Image not found or inaccessible.' });
+        }
     });
 
 }

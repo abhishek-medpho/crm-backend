@@ -5,6 +5,9 @@ type SortOrder = 'asc' | 'desc' | null;
 
 export default function MyMeetings() {
     const [rows, setRows] = useState<any[]>([]);
+    const [modalOpen, setModalOpen] = useState(false);
+    const [modalImageUrl, setModalImageUrl] = useState<string | null>(null);
+    const [modalFullscreen, setModalFullscreen] = useState(false);
     const [loading, setLoading] = useState(false);
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>(null);
@@ -82,8 +85,63 @@ export default function MyMeetings() {
         'selfie_image', 'duration', 'meeting_notes', 'meeting_summary'
     ];
 
+    // Helper to convert Drive link or fileId to public image proxy URL
+    function getPublicImageUrl(imageLinkOrId: string) {
+        if (!imageLinkOrId) return '';
+        // If it's a full drive link, extract the file ID
+        const match = imageLinkOrId.match(/(?:\/d\/|id=)([\w-]+)/);
+        const fileId = match ? match[1] : imageLinkOrId;
+        return `/api/v1/OPD/public-image/${fileId}`;
+    }
+
     return (
         <div className="py-6">
+            {/* Image Modal */}
+            {modalOpen && (
+                <div
+                    className="fixed inset-0 z-50 flex items-center justify-center"
+                    style={{ background: 'rgba(0,0,0,0.5)' }}
+                    onClick={(e) => {
+                        if (e.target === e.currentTarget) setModalOpen(false);
+                    }}
+                >
+                    <div
+                        className={`bg-white rounded-lg shadow-xl p-6 relative flex flex-col items-center justify-center ${modalFullscreen ? 'w-screen h-screen' : ''}`}
+                        style={modalFullscreen ? { width: '100vw', height: '100vh', maxWidth: '100vw', maxHeight: '100vh' } : { width: '60vw', maxWidth: '700px', minWidth: '320px' }}
+                    >
+                        <div className="w-full flex justify-between items-center mb-4">
+                            <button
+                                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                                onClick={() => setModalFullscreen(f => !f)}
+                                aria-label="Toggle Fullscreen"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                {modalFullscreen ? (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M9 15v2a2 2 0 0 1-2 2H5m10-4v2a2 2 0 0 0 2 2h2M9 9V7a2 2 0 0 0-2-2H5m10 4V7a2 2 0 0 1 2-2h2"/></svg>
+                                ) : (
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" fill="none" viewBox="0 0 24 24"><path stroke="currentColor" strokeWidth="2" d="M4 8V6a2 2 0 0 1 2-2h2m8 0h2a2 2 0 0 1 2 2v2m0 8v2a2 2 0 0 1-2 2h-2m-8 0H6a2 2 0 0 1-2-2v-2"/></svg>
+                                )}
+                            </button>
+                            <button
+                                className="text-gray-500 hover:text-gray-700 text-2xl font-bold"
+                                onClick={() => setModalOpen(false)}
+                                aria-label="Close"
+                                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
+                            >
+                                &#10005;
+                            </button>
+                        </div>
+                        {modalImageUrl && (
+                            <img
+                                src={modalImageUrl}
+                                alt="Meeting Image"
+                                className="w-full h-auto rounded"
+                                style={modalFullscreen ? { maxHeight: '80vh', objectFit: 'contain' } : { maxHeight: '50vh', objectFit: 'contain' }}
+                            />
+                        )}
+                    </div>
+                </div>
+            )}
             <h2 className="text-2xl font-semibold mb-4">My Meetings</h2>
 
             {/* Table Container with horizontal scroll */}
@@ -128,18 +186,32 @@ export default function MyMeetings() {
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-700">
                                     {r.clinic_image ? (
-                                        <a className="text-blue-600 hover:underline" href={r.clinic_image} target="_blank" rel="noreferrer">
+                                        <button
+                                            className="text-blue-600 hover:underline"
+                                            onClick={() => {
+                                                setModalImageUrl(getPublicImageUrl(r.clinic_image));
+                                                setModalOpen(true);
+                                            }}
+                                            type="button"
+                                        >
                                             View Image
-                                        </a>
+                                        </button>
                                     ) : (
                                         '-'
                                     )}
                                 </td>
                                 <td className="px-4 py-2 text-sm text-gray-700">
                                     {r.selfie_image ? (
-                                        <a className="text-blue-600 hover:underline" href={r.selfie_image} target="_blank" rel="noreferrer">
+                                        <button
+                                            className="text-blue-600 hover:underline"
+                                            onClick={() => {
+                                                setModalImageUrl(getPublicImageUrl(r.selfie_image));
+                                                setModalOpen(true);
+                                            }}
+                                            type="button"
+                                        >
                                             View Image
-                                        </a>
+                                        </button>
                                     ) : (
                                         '-'
                                     )}
