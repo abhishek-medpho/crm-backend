@@ -9,7 +9,15 @@ export default function MyMeetings() {
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    // Responsive itemsPerPage: 10 for desktop, 5 for mobile
+    const getItemsPerPage = () => (window.innerWidth < 768 ? 5 : 10);
+    const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage());
+
+    useEffect(() => {
+        const handleResize = () => setItemsPerPage(getItemsPerPage());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const fetchedRef = useRef(false);
 
     useEffect(() => {
@@ -78,12 +86,11 @@ export default function MyMeetings() {
     if (!rows.length) return <div className="py-8">No meetings found.</div>;
 
     const columns = [
-        'agent_name', 'doctor_name', 'meeting_date', 'gps_location_link', 'clinic_image',
-        'selfie_image', 'duration', 'meeting_notes', 'meeting_summary'
+        'doctor_name', 'meeting_date', 'gps_location_link', 'duration', 'meeting_notes', 'meeting_summary'
     ];
 
     return (
-        <div className="py-6">
+        <div>
             <h2 className="text-2xl font-semibold mb-4">My Meetings</h2>
 
             {/* Table Container with horizontal scroll */}
@@ -114,31 +121,12 @@ export default function MyMeetings() {
                     <tbody className="bg-white divide-y divide-gray-100">
                         {paginatedRows.map((r, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.agent_name}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.doctor_name}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.meeting_date || '-'}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.meeting_date ? new Date(r.meeting_date).toLocaleDateString() : '-'}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">
                                     {r.gps_location_link ? (
                                         <a className="text-blue-600 hover:underline" href={r.gps_location_link} target="_blank" rel="noreferrer">
                                             View Location
-                                        </a>
-                                    ) : (
-                                        '-'
-                                    )}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-700">
-                                    {r.clinic_image ? (
-                                        <a className="text-blue-600 hover:underline" href={r.clinic_image} target="_blank" rel="noreferrer">
-                                            View Image
-                                        </a>
-                                    ) : (
-                                        '-'
-                                    )}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-700">
-                                    {r.selfie_image ? (
-                                        <a className="text-blue-600 hover:underline" href={r.selfie_image} target="_blank" rel="noreferrer">
-                                            View Image
                                         </a>
                                     ) : (
                                         '-'
