@@ -12,7 +12,9 @@ export default function Sidebar({ open, onClose }: { open: boolean; onClose: () 
             <aside
                 className={`fixed left-0 top-0 h-full w-64 bg-white border-r z-50 transform transition-transform ${open ? 'translate-x-0' : '-translate-x-full'}`}>
                 <div className="p-4 border-b">
-                    <div className="text-lg font-bold">MEDPHO CRM</div>
+                    <Link to="/" onClick={onClose} className="text-lg font-bold cursor-pointer block" title="Go to Home">
+                        MEDPHO CRM
+                    </Link>
                 </div>
                 <nav className="p-4">
                     <ul className="space-y-2">

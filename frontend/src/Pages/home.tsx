@@ -1,16 +1,18 @@
 import { Link } from 'react-router-dom';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import api from '../api';
 
 function Home() {
   const userString = localStorage.getItem('user');
   const user = userString ? JSON.parse(userString) : { name: 'User', role: '' };
   const canUpdateDisposition = user.role === 'operations' || user.role === 'super_admin';
-  
   const [matrix, setMatrix] = useState({ meetings_this_month: 0, leads_this_month: 0, ipd_this_month: 0 });
   const [loadingMatrix, setLoadingMatrix] = useState(true);
+  const matrixFetchedRef = useRef(false);
 
   useEffect(() => {
+    if (matrixFetchedRef.current) return;
+    matrixFetchedRef.current = true;
     api.get('/opd/getMatrix')
       .then(res => {
         setMatrix(res.data?.data || { meetings_this_month: 0, leads_this_month: 0, ipd_this_month: 0 });

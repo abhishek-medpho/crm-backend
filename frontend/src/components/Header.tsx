@@ -22,7 +22,7 @@ export default function Header({ showBack = false, onMenuToggle }: HeaderProps) 
                 <div className="flex justify-between h-16">
 
                     {/* Left: Back Button or Logo */}
-                    <div className="flex-shrink-0 flex items-center gap-4">
+                    <div className="flex-shrink-0 flex items-center gap-1 sm:gap-4">
                         {/* Hamburger / Menu Toggle */}
                         <button
                             onClick={() => onMenuToggle && onMenuToggle()}
@@ -45,7 +45,11 @@ export default function Header({ showBack = false, onMenuToggle }: HeaderProps) 
                         )}
 
                         <div className="flex items-center gap-2">
-                            <span className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500 hidden sm:block">
+                            <span
+                                className="text-xl font-bold bg-clip-text text-transparent bg-gradient-to-r from-blue-700 to-blue-500 cursor-pointer"
+                                onClick={() => navigate('/')}
+                                title="Go to Home"
+                            >
                                 MEDPHO CRM
                             </span>
                         </div>

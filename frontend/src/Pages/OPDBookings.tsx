@@ -9,7 +9,15 @@ export default function OPDBookings() {
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    // Responsive itemsPerPage: 10 for desktop, 5 for mobile
+    const getItemsPerPage = () => (window.innerWidth < 768 ? 5 : 7);
+    const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage());
+
+    useEffect(() => {
+        const handleResize = () => setItemsPerPage(getItemsPerPage());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const fetchedRef = useRef(false);
 
     useEffect(() => {
@@ -71,13 +79,12 @@ export default function OPDBookings() {
     if (!rows.length) return <div className="py-8">No bookings found.</div>;
 
     const columns = [
-        'booking_reference', 'agent_name', 'patient_name', 'patient_phone', 'age', 'gender',
-        'medical_condition', 'hospital_names', 'doctor_name', 'appointment_date', 'current_disposition',
-        'aadhar_card_url', 'pmjay_card_url', 'payment_mode', 'source', 'created_at', 'updated_at'
+        'booking_reference', 'patient_name', 'medical_condition', 'hospital_names', 'referee_name', 'appointment_date', 'current_disposition',
+        'patient_phone', 'age', 'gender', 'created_at'
     ];
 
     return (
-        <div className="py-6">
+        <div>
             <h2 className="text-2xl font-semibold mb-4">My OPD Bookings</h2>
 
             {/* Table Container with horizontal scroll */}
@@ -109,26 +116,25 @@ export default function OPDBookings() {
                         {paginatedRows.map((r, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
                                 <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.booking_reference}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.agent_name}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.patient_name}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.patient_phone}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.age}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.gender}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.medical_condition}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.hospital_names}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.doctor_name || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.appointment_date}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.appointment_date ? new Date(r.appointment_date).toLocaleDateString() : '-'}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.current_disposition}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">
-                                    {r.aadhar_card_url ? <a className="text-blue-600 hover:underline" href={r.aadhar_card_url} target="_blank" rel="noreferrer">View</a> : '-'}
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">
+                                    <span className="hidden sm:inline">{r.patient_phone}</span>
+                                    <a
+                                        href={r.patient_phone ? `tel:${r.patient_phone}` : undefined}
+                                        className="sm:hidden text-blue-600 underline"
+                                        style={{ pointerEvents: r.patient_phone ? 'auto' : 'none' }}
+                                    >
+                                        {r.patient_phone}
+                                    </a>
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-700">
-                                    {r.pmjay_card_url ? <a className="text-blue-600 hover:underline" href={r.pmjay_card_url} target="_blank" rel="noreferrer">View</a> : '-'}
-                                </td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{r.payment_mode}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{r.source}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.created_at}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.updated_at}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.age}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.gender}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '-'}</td>
                             </tr>
                         ))}
                     </tbody>

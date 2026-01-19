@@ -9,7 +9,15 @@ export default function DoctorPortfolio() {
     const [sortColumn, setSortColumn] = useState<string | null>(null);
     const [sortOrder, setSortOrder] = useState<SortOrder>(null);
     const [currentPage, setCurrentPage] = useState(1);
-    const itemsPerPage = 5;
+    // Responsive itemsPerPage: 10 for desktop, 5 for mobile
+    const getItemsPerPage = () => (window.innerWidth < 768 ? 5 : 10);
+    const [itemsPerPage, setItemsPerPage] = useState(getItemsPerPage());
+
+    useEffect(() => {
+        const handleResize = () => setItemsPerPage(getItemsPerPage());
+        window.addEventListener('resize', handleResize);
+        return () => window.removeEventListener('resize', handleResize);
+    }, []);
     const fetchedRef = useRef(false);
 
     useEffect(() => {
@@ -78,12 +86,12 @@ export default function DoctorPortfolio() {
     if (!rows.length) return <div className="py-8">No doctor portfolio found.</div>;
 
     const columns = [
-        'agent_name', 'doctor_name', 'gps_location_link', 'first_meeting', 'last_meeting',
-        'number_of_meetings', 'number_of_leads', 'number_of_ipd', 'assigned_agent_id_secondary'
+        'doctor_name', 'gps_location_link', 'first_meeting', 'last_meeting',
+        'number_of_meetings', 'number_of_leads', 'number_of_ipd'
     ];
 
     return (
-        <div className="py-6">
+        <div>
             <h2 className="text-2xl font-semibold mb-4">My Doctor Portfolio</h2>
 
             {/* Table Container with horizontal scroll */}
@@ -114,7 +122,6 @@ export default function DoctorPortfolio() {
                     <tbody className="bg-white divide-y divide-gray-100">
                         {paginatedRows.map((r, idx) => (
                             <tr key={idx} className="hover:bg-gray-50">
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.agent_name}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">{r.doctor_name}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700">
                                     {r.gps_location_link ? (
@@ -125,12 +132,11 @@ export default function DoctorPortfolio() {
                                         '-'
                                     )}
                                 </td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.first_meeting || '-'}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.last_meeting || '-'}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.first_meeting ? new Date(r.first_meeting).toLocaleDateString() : '-'}</td>
+                                <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.last_meeting ? new Date(r.last_meeting).toLocaleDateString() : '-'}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.number_of_meetings || 0}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.number_of_leads || 0}</td>
                                 <td className="px-4 py-2 text-sm text-gray-700 whitespace-nowrap">{r.number_of_ipd || 0}</td>
-                                <td className="px-4 py-2 text-sm text-gray-700">{r.assigned_agent_id_secondary || '-'}</td>
                             </tr>
                         ))}
                     </tbody>
